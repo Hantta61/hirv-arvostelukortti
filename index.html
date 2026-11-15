@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f3a2b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HIRV-kortti">
+<title>HIRV arvostelukortti</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#f3f1ea; --card:#fffdf8; --ink:#1d241f; --muted:#5f6b62; --line:#ddd8c9;
+  --pine:#1f3a2b; --pine2:#2f5640; --moss:#6d8b4e; --amber:#c9822b; --rust:#a4452c;
+  --ok:#2f7a4a; --r:12px; --pad:14px;
+  font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#121714;--card:#1b221d;--ink:#e9ece6;--muted:#9aa79d;--line:#2d382f;--pine:#1a2f22;--pine2:#3d6e51;--moss:#8fb06b;}
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:10;background:var(--pine);color:#f2efe4;
+  padding:calc(10px + env(safe-area-inset-top)) var(--pad) 10px;display:flex;align-items:center;gap:10px}
+header h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .total{font-variant-numeric:tabular-nums;font-weight:700;font-size:20px}
+header .prize{font-size:12px;background:var(--amber);color:#1d1408;border-radius:999px;padding:2px 8px;font-weight:700}
+header button{background:transparent;border:1px solid #ffffff44;color:inherit;border-radius:8px;padding:6px 10px;font-size:14px}
+main{max-width:760px;margin:0 auto;padding:var(--pad)}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:10;background:var(--card);border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{background:none;border:0;padding:10px 4px 12px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button.on{color:var(--pine2);font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:var(--pad);margin-bottom:12px}
+.card h2{font-size:16px;margin:0 0 10px;display:flex;align-items:baseline;gap:8px}
+.card h2 .k{font-size:12px;color:var(--muted);font-weight:500}
+.card h2 .w{margin-left:auto;font-variant-numeric:tabular-nums}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:18px 0 8px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid.three{grid-template-columns:1fr 1fr 1fr}
+@media (max-width:420px){.grid.three{grid-template-columns:1fr 1fr}}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+input,select,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--moss);outline-offset:-1px}
+input::placeholder{color:var(--muted);opacity:.85}
+textarea{min-height:80px;resize:vertical}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);margin:6px 0}
+.chk input{width:20px;height:20px;accent-color:var(--pine2)}
+.btn{font:inherit;font-size:15px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 14px}
+.btn.pri{background:var(--pine2);border-color:var(--pine2);color:#fff}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn.ghost{background:none}
+.btn.danger{color:var(--rust)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pts{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;margin-top:10px}
+.pts button{font:inherit;font-size:14px;padding:9px 0;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
+.pts button.sugg{border-color:var(--moss);border-width:2px}
+.pts button.on{background:var(--pine2);color:#fff;border-color:var(--pine2)}
+.pts button:disabled{opacity:.3}
+.sugg-line{font-size:13px;color:var(--muted);margin-top:8px;min-height:18px}
+.sugg-line b{color:var(--ink)}
+.warn{color:var(--rust);font-size:13px;margin-top:4px}
+.manual{font-size:11px;background:var(--amber);color:#1d1408;border-radius:4px;padding:1px 5px;margin-left:6px}
+details{margin-top:10px;font-size:13px;color:var(--muted)}
+details summary{cursor:pointer;color:var(--pine2)}
+@media (prefers-color-scheme:dark){details summary{color:var(--moss)}}
+table{border-collapse:collapse;width:100%;font-size:13px}
+td,th{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.sub{border:1px dashed var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+.sub .hd{display:flex;align-items:center;font-size:13px;font-weight:600;margin-bottom:8px}
+.sub .hd .x{margin-left:auto}
+/* ajanotto */
+.evbtns{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.evbtns button{font:inherit;font-size:15px;font-weight:600;padding:14px 8px;border-radius:12px;border:0;color:#fff;background:var(--pine2);text-align:left;display:flex;align-items:center;gap:8px}
+.evbtns button .dot{width:10px;height:10px;border-radius:50%;background:#fff;opacity:.8;flex:none}
+.evbtns .c-loyto{background:#7a5a2a}.evbtns .c-kh{background:#2f7a4a}.evbtns .c-sh{background:#4f8a7a}
+.evbtns .c-hl{background:#6b6f68}.evbtns .c-karkko{background:#a4452c}.evbtns .c-amp{background:#c9822b;color:#1d1408}
+.evbtns .c-irti{background:#2f5640}.evbtns .c-kytk{background:#47567a}.evbtns .c-pimea{background:#2b2f3a}.evbtns .c-era{background:#1d241f}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.stat .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.live{display:flex;align-items:center;gap:8px;background:#2f7a4a;color:#fff;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-weight:600}
+.live.sh{background:#4f8a7a}
+.live .pulse{width:10px;height:10px;border-radius:50%;background:#fff;animation:p 1.2s infinite}
+@keyframes p{50%{opacity:.25}}
+.evlist .ev{display:grid;grid-template-columns:104px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.evlist .ev input[type=time]{padding:6px;font-size:15px}
+.evlist .ev .t{font-size:14px;font-weight:600}
+.evlist .ev .nt{font-size:12px;color:var(--muted)}
+.tag{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+.list .item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.list .item .m{flex:1;min-width:0}
+.list .item .m b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list .item .m span{font-size:12px;color:var(--muted)}
+.big{font-size:44px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.prizebox{display:flex;align-items:center;gap:16px}
+.prizebox .pz{display:inline-block;font-size:15px;font-weight:700;padding:6px 12px;border-radius:999px;background:var(--amber);color:#1d1408}
+.prizebox .pz.none{background:var(--line);color:var(--muted)}
+.muted{color:var(--muted);font-size:13px}
+.hidden{display:none!important}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:999px;font-size:14px;z-index:50;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.modal{position:fixed;inset:0;background:#0008;z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.modal .sheet{background:var(--card);width:100%;max-width:760px;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+#printsheet{display:none}
+@media print{
+  header,nav.tabs,main,.toast{display:none!important}
+  #printsheet{display:block;color:#000;font-size:12px;padding:0}
+  #printsheet table{font-size:12px}
+  #printsheet h1{font-size:18px;margin:0 0 6px}
+  body{background:#fff;padding:0}
+}
+</style>
+</head>
+<body>
+<header>
+  <button id="btnList" aria-label="Kokeet">☰</button>
+  <h1 id="hdrTitle">HIRV arvostelukortti</h1>
+  <span class="prize hidden" id="hdrPrize"></span>
+  <span class="total" id="hdrTotal">0</span>
+</header>
+
+<main>
+  <!-- PERUSTIEDOT -->
+  <section id="tab-info">
+    <div class="card">
+      <h2>Koe</h2>
+      <div class="grid">
+        <div><label>Päivämäärä</label><input type="date" data-f="info.pvm"></div>
+        <div><label>Koepaikka</label><input data-f="info.paikka"></div>
+        <div><label>Järjestäjä</label><input data-f="info.jarjestaja"></div>
+        <div><label>Koemaasto / alue</label><input data-f="info.maasto"></div>
+        <div><label>Ylituomari</label><input data-f="info.ylituomari"></div>
+        <div><label>Palkintotuomari(t)</label><input data-f="info.tuomari"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Koira</h2>
+      <div class="grid">
+        <div style="grid-column:1/-1"><label>Nimi</label><input data-f="info.koira"></div>
+        <div><label>Rekisterinumero</label><input data-f="info.reknro"></div>
+        <div><label>Rotu</label><input data-f="info.rotu" list="rodut"></div>
+        <div><label>Sukupuoli</label><select data-f="info.sukup"><option value=""></option><option>uros</option><option>narttu</option></select></div>
+        <div><label>Syntymäaika</label><input type="date" data-f="info.syntynyt"></div>
+        <div><label>Omistaja</label><input data-f="info.omistaja"></div>
+        <div><label>Ohjaaja</label><input data-f="info.ohjaaja"></div>
+      </div>
+      <datalist id="rodut"><option>suomenpystykorva</option><option>harmaa norjanhirvikoira</option><option>musta norjanhirvikoira</option><option>jämtlanninpystykorva</option><option>karjalankarhukoira</option><option>länsisiperianlaika</option><option>itäsiperianlaika</option><option>venäläis-eurooppalainen laika</option><option>ruotsinvalkopystykorva</option></datalist>
+    </div>
+    <div class="card">
+      <h2>Olosuhteet</h2>
+      <div class="grid">
+        <div><label>Sää</label><input data-f="info.saa"></div>
+        <div><label>Lämpötila °C</label><input inputmode="decimal" data-f="info.lampo"></div>
+        <div><label>Tuuli</label><input data-f="info.tuuli"></div>
+        <div><label>Lumi</label><input data-f="info.lumi"></div>
+      </div>
+      <label class="chk"><input type="checkbox" data-f="info.paikannin"> Paikanninta käytetty arvostelussa</label>
+    </div>
+  </section>
+
+  <!-- AJANOTTO -->
+  <section id="tab-time" class="hidden">
+    <div id="liveBox"></div>
+    <div class="stats" id="stats"></div>
+    <div class="card">
+      <h2>Kirjaa tapahtuma <span class="k">aika = nyt, muokattavissa</span></h2>
+      <div class="evbtns" id="evbtns"></div>
+    </div>
+    <div class="card">
+      <h2>Tapahtumat</h2>
+      <div class="evlist" id="evlist"></div>
+      <p class="muted">Haukkujakso alkaa kiinteästä tai siirtyvästä haukusta ja päättyy taukoon, karkkoon, kytkentään tai erän päättymiseen. Alle 2 min tauot lasketaan haukkuaikaan. Työskentelyaika lasketaan ensimmäisestä löydöstä (max 300 min, viimeistään 120 min pimeän tulosta).</p>
+    </div>
+  </section>
+
+  <!-- ARVOSTELU -->
+  <section id="tab-score" class="hidden">
+    <p class="muted" style="margin-top:0">Sovellus ehdottaa pisteet sääntöjen taulukoista (vihreä kehys). Tuomari voi aina valita toisin. Tyhjät kentät käyttävät ajanoton arvoja (näkyvät harmaana).</p>
+    <div id="cats"></div>
+  </section>
+
+  <!-- TULOS -->
+  <section id="tab-result" class="hidden">
+    <div class="card">
+      <div class="prizebox"><div class="big" id="resTotal">0</div><div><div class="pz" id="resPrize"></div><div class="muted" id="resNote" style="margin-top:6px"></div></div></div>
+    </div>
+    <div class="card">
+      <h2>Pöytäkirja</h2>
+      <table id="resTable"></table>
+    </div>
+    <div class="card">
+      <h2>Suorituksen tila</h2>
+      <select data-f="status">
+        <option value="normaali">Normaali</option>
+        <option value="keskeytettiin">Keskeytettiin (pisteet voimassa)</option>
+        <option value="luopui">Luopui (loppupisteet 0)</option>
+        <option value="suljettu">Suljettu (loppupisteet 0)</option>
+        <option value="hylatty">Hylätty (ei arvostella, 0)</option>
+      </select>
+      <div style="margin-top:8px"><label>Syy / selvitys</label><input data-f="statusSyy"></div>
+      <div style="margin-top:8px"><label>Koepöytäkirjan päättymisaika</label><input type="time" data-f="paattyi"></div>
+    </div>
+    <div class="card">
+      <h2>Huomautukset</h2>
+      <textarea data-f="huom" placeholder="Virheellinen toiminta, vajaan työskentelyajan selvitys, luonnonesteet ym."></textarea>
+    </div>
+    <div class="card">
+      <h2>Tasatuloksen ratkaisu</h2>
+      <div class="muted" id="tieInfo"></div>
+    </div>
+    <div class="row">
+      <button class="btn pri" id="btnCopy">Kopioi yhteenveto</button>
+      <button class="btn" id="btnPrint">Tulosta</button>
+      <button class="btn" id="btnExport">Vie JSON</button>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs">
+  <button data-tab="info" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Tiedot</button>
+  <button data-tab="time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>Ajanotto</button>
+  <button data-tab="score"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16M7 16V9M12 16V5M17 16v-4"/></svg>Arvostelu</button>
+  <button data-tab="result"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="9" r="6"/><path d="M8.5 14 7 22l5-3 5 3-1.5-8"/></svg>Tulos</button>
+</nav>
+
+<div id="printsheet"></div>
+<div class="toast" id="toast"></div>
+
+<script src="rules.js"></script>
+<script>
+(function(){
+'use strict';
+const H = window.HIRV;
+const $ = (s, el=document) => el.querySelector(s);
+const $$ = (s, el=document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = n => (Math.round(n*10)/10).toLocaleString('fi-FI');
+const hhmm = t => { const d=new Date(t); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+const uid = () => Math.random().toString(36).slice(2,10);
+
+const EV = {
+  irti:{l:'Irtilasku', c:'c-irti'}, loyto:{l:'Löytö', c:'c-loyto'}, kh:{l:'Kiinteä haukku', c:'c-kh'}, sh:{l:'Siirtyvä haukku', c:'c-sh'},
+  hl:{l:'Haukku taukoaa', c:'c-hl'}, karkko:{l:'Karkko', c:'c-karkko'}, amp:{l:'Ampumatilaisuus', c:'c-amp'}, kytk:{l:'Kytketty / yhteys', c:'c-kytk'},
+  pimea:{l:'Pimeä tuli', c:'c-pimea'}, era:{l:'Erä päättyy', c:'c-era'}
+};
+const EV_COLORS = {irti:'#2f5640',loyto:'#7a5a2a',kh:'#2f7a4a',sh:'#4f8a7a',hl:'#6b6f68',karkko:'#a4452c',amp:'#c9822b',kytk:'#47567a',pimea:'#2b2f3a',era:'#1d241f'};
+
+/* ---------- tallennus ---------- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+function blank(){
+  const today = new Date().toISOString().slice(0,10);
+  return { id: uid(), created: Date.now(), info:{pvm:today}, events:[],
+    s:{ haku:{lel:false, lenkit:[{}]}, loyto:{}, lh:{loydot:[]}, ht:{}, seur:{}, pys:{row:''}, ha:{}, kuu:{}, tih:{tas:'tasainen'}, tot:{} },
+    pts:{}, status:'normaali', statusSyy:'', huom:'', paattyi:'' };
+}
+let kokeet = store.get('hirv.kokeet', []);
+let cur = kokeet.find(k => k.id === store.get('hirv.cur')) || null;
+if (!cur){ cur = blank(); kokeet.unshift(cur); }
+function save(){ cur.updated = Date.now(); store.set('hirv.kokeet', kokeet); store.set('hirv.cur', cur.id); }
+
+/* ---------- polut ---------- */
+const getP = (o, p) => p.split('.').reduce((a,k) => a==null?undefined:a[k], o);
+function setP(o, p, v){ const ks=p.split('.'); let x=o; ks.slice(0,-1).forEach(k=>{ if(x[k]==null) x[k]={}; x=x[k]; }); x[ks[ks.length-1]]=v; }
+
+/* ---------- laskenta ---------- */
+let TL = H.timeline(cur.events, Date.now());
+const pick = (v, auto) => (v === '' || v === undefined || v === null) ? auto : +v;
+function vals(){
+  const s = cur.s;
+  return {
+    tyo: pick(s.ht.tyo, TL.tyo), seis: pick(s.ht.seis, TL.kh), hauk: pick(s.ha.min, TL.hauk),
+    amp: pick(s.ht.amp, TL.amp), karkot: pick(s.ht.karkot, TL.karkot),
+    seurMin: pick(s.seur.min, TL.seurMin)
+  };
+}
+function suggestions(){
+  const v = vals(), s = cur.s;
+  const lhState = { loydot: s.lh.loydot.length ? s.lh.loydot.map((l,i)=>({min: pick(l.min, TL.loydot[i] ? TL.loydot[i].min : null), sade:l.sade||'0.2'}))
+                                               : TL.loydot.map(l=>({min:l.min, sade:'0.2'})) };
+  return {
+    1: H.haku(s.haku), 2: H.loyto(s.loyto), 3: H.lh(lhState),
+    4: H.ht({amp:v.amp, karkot:v.karkot, tyo:v.tyo, seis:v.seis, hauk:v.hauk}),
+    5: H.seur({km:s.seur.km, min: (s.seur.km===''||s.seur.km==null) ? v.seurMin : s.seur.min}),
+    6: H.pys(s.pys), 7: H.ha(v.hauk), 8: H.kuu(s.kuu, v.hauk), 9: H.tih(s.tih, v.hauk), 10: H.tot(s.tot, v.tyo)
+  };
+}
+function finalPts(sg){
+  const out = {};
+  H.CATS.forEach(c => {
+    const m = cur.pts[c.id];
+    out[c.id] = (m !== undefined && m !== null) ? m : sg[c.id].p;
+  });
+  return out;
+}
+function totals(){
+  const sg = suggestions(), fp = finalPts(sg);
+  let sum = 0;
+  H.CATS.forEach(c => { const p = fp[c.id]; if (typeof p === 'number') sum += p * c.k; });
+  const zero = ['luopui','suljettu','hylatty'].includes(cur.status);
+  const total = zero ? 0 : sum;
+  const missing = H.CATS.filter(c => fp[c.id] === null || fp[c.id] === undefined);
+  return { sg, fp, raw: sum, total, prize: zero ? 0 : H.PRIZE(total), missing, zero };
+}
+
+/* ---------- välilehdet ---------- */
+let tab = 'info';
+function showTab(t){
+  tab = t;
+  $$('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  ['info','time','score','result'].forEach(x => $('#tab-'+x).classList.toggle('hidden', x !== t));
+  if (t === 'time') renderTime();
+  if (t === 'score') renderScore();
+  if (t === 'result') renderResult();
+  window.scrollTo(0,0);
+}
+$$('nav.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
+/* ---------- sidotut kentät (data-f) ---------- */
+function bindFields(root=document){
+  $$('[data-f]', root).forEach(el => {
+    const v = getP(cur, el.dataset.f);
+    if (el.type === 'checkbox') el.checked = !!v; else el.value = v ?? '';
+  });
+}
+document.addEventListener('input', e => {
+  const el = e.target; if (!el.dataset || !el.dataset.f) return;
+  setP(cur, el.dataset.f, el.type === 'checkbox' ? el.checked : el.value);
+  save(); refresh();
+});
+document.addEventListener('change', e => {
+  const el = e.target; if (!el.dataset || !el.dataset.f) return;
+  setP(cur, el.dataset.f, el.type === 'checkbox' ? el.checked : el.value);
+  save(); refresh();
+  if (el.dataset.rerender) renderScore();
+});
+
+/* ---------- otsikko ---------- */
+function refreshHeader(){
+  const t = totals();
+  $('#hdrTitle').textContent = cur.info.koira || 'HIRV arvostelukortti';
+  $('#hdrTotal').textContent = fmt(t.total);
+  const hp = $('#hdrPrize');
+  hp.classList.toggle('hidden', !t.prize);
+  hp.textContent = t.prize ? t.prize + '. palk.' : '';
+  return t;
+}
+function refresh(){
+  TL = H.timeline(cur.events, Date.now());
+  const t = refreshHeader();
+  if (tab === 'score') refreshScore(t);
+  if (tab === 'time') refreshStats();
+  if (tab === 'result') renderResult();
+}
+
+/* ---------- AJANOTTO ---------- */
+function renderTime(){
+  $('#evbtns').innerHTML = Object.entries(EV).map(([k,v]) => `<button class="${v.c}" data-ev="${k}"><span class="dot"></span>${v.l}</button>`).join('');
+  $$('#evbtns button').forEach(b => b.onclick = () => addEvent(b.dataset.ev));
+  renderEvList(); refreshStats();
+}
+function addEvent(type){
+  cur.events.push({ id: uid(), t: Date.now(), type, note:'' });
+  if (navigator.vibrate) try{ navigator.vibrate(30); }catch(e){}
+  save(); TL = H.timeline(cur.events, Date.now()); renderEvList(); refreshStats(); refreshHeader();
+  toast(EV[type].l + ' ' + hhmm(Date.now()));
+}
+function renderEvList(){
+  const ev = [...cur.events].sort((a,b)=>b.t-a.t);
+  $('#evlist').innerHTML = ev.length ? ev.map(e => `
+    <div class="ev" data-id="${e.id}">
+      <input type="time" value="${hhmm(e.t)}" data-evt="time">
+      <div><div class="t"><span class="tag" style="background:${EV_COLORS[e.type]}"></span>${EV[e.type].l}</div>
+        <input placeholder="muistiinpano" value="${esc(e.note)}" data-evt="note" style="padding:4px 6px;font-size:13px;margin-top:3px"></div>
+      <button class="btn sm ghost danger" data-evt="del" aria-label="Poista">✕</button>
+    </div>`).join('') : '<p class="muted">Ei tapahtumia. Aloita irtilaskusta.</p>';
+  $$('#evlist .ev').forEach(row => {
+    const e = cur.events.find(x => x.id === row.dataset.id);
+    $('[data-evt=time]', row).onchange = ev2 => {
+      const [h,m] = ev2.target.value.split(':').map(Number); if (isNaN(h)) return;
+      const d = new Date(e.t); d.setHours(h, m, 0, 0); let nt = d.getTime();
+      if (nt - e.t > 12*3600000) nt -= 86400000; else if (e.t - nt > 12*3600000) nt += 86400000; e.t = nt;
+      save(); refresh(); renderEvList();
+    };
+    $('[data-evt=note]', row).oninput = ev2 => { e.note = ev2.target.value; save(); };
+    $('[data-evt=del]', row).onclick = () => { askConfirm(`Poistetaanko ${EV[e.type].l} ${hhmm(e.t)}?`, () => { cur.events = cur.events.filter(x => x !== e); save(); refresh(); renderEvList(); }); };
+  });
+}
+function refreshStats(){
+  const s = TL;
+  const st = (v,l) => `<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+  $('#stats').innerHTML = st(s.haku,'Hakuaika min') + st(s.tyo,'Työskentely min') + st(s.hauk,'Haukkuaika min')
+    + st(s.kh,'Seisontahaukku') + st(s.sh,'Siirtyvä') + st(s.karkot+' / '+s.amp,'Karkot / amp.');
+  const lb = $('#liveBox');
+  if (s.live && s.open){
+    const m = Math.round((Date.now()-s.openStart)/60000);
+    lb.innerHTML = `<div class="live ${s.open}"><span class="pulse"></span>${s.open==='kh'?'Kiinteä':'Siirtyvä'} haukku käynnissä · ${m} min (alkoi ${hhmm(s.openStart)})</div>`;
+  } else if (s.firstLoyto && !s.ended){
+    const left = Math.max(0, 300 - s.tyo);
+    lb.innerHTML = `<div class="live" style="background:var(--pine2)">Työskentelyaikaa jäljellä ${left} min</div>`;
+  } else lb.innerHTML = '';
+}
+setInterval(() => { if (document.visibilityState === 'visible' && cur.events.length) refresh(); }, 15000);
+
+/* ---------- ARVOSTELU ---------- */
+const ph = v => `placeholder="${v ?? ''}"`;
+function catBody(c){
+  const s = cur.s;
+  switch(c.key){
+  case 'haku': return `
+    <label class="chk"><input type="checkbox" data-f="s.haku.lel" data-rerender="1"> Löytö ensimmäiseltä hakulenkiltä (LEL, max 8 p)</label>
+    ${s.haku.lenkit.map((l,i)=>`<div class="sub"><div class="hd">Lenkki ${i+1}${s.haku.lenkit.length>1?`<button class="btn sm ghost danger x" data-del-lenkki="${i}">Poista</button>`:''}</div>
+      <div class="grid three">
+        <div><label>Pituus km</label><input inputmode="decimal" data-f="s.haku.lenkit.${i}.km"></div>
+        <div><label>Suurin etäisyys m</label><input inputmode="numeric" data-f="s.haku.lenkit.${i}.dist"></div>
+        <div><label>Kesto min</label><input inputmode="numeric" data-f="s.haku.lenkit.${i}.min"></div>
+      </div>
+      <label class="chk"><input type="checkbox" data-f="s.haku.lenkit.${i}.noud"> Noudettu (max 7 p)</label>
+      <label class="chk"><input type="checkbox" data-f="s.haku.lenkit.${i}.eihae"> Koira ei hae (0 p)</label></div>`).join('')}
+    <button class="btn sm" id="addLenkki">+ Lisää hakulenkki</button>
+    <details><summary>Arvosteluperusteet</summary><table>
+      <tr><th>p</th><th>Lenkit</th><th>Nopeus</th><th>Etäisyys</th><th>tai kesto</th></tr>
+      <tr><td>9–10</td><td>≥ 2 km</td><td>kiitettävä (≥ 6 km/h)</td><td>≥ 800 m</td><td>15–30 min</td></tr>
+      <tr><td>7–8</td><td>≥ 1,5 km</td><td>hyvä</td><td>≥ 600 m</td><td>10–15 min</td></tr>
+      <tr><td>5–6</td><td>≥ 1 km</td><td>tyydyttävä</td><td>≥ 400 m</td><td>5–10 min</td></tr>
+      <tr><td>3–4</td><td>&lt; 1 km</td><td>välttävä</td><td>≥ 300 m</td><td>2–5 min</td></tr>
+      <tr><td>1–2</td><td>&lt; 500 m</td><td>huono</td><td>&lt; 300 m</td><td>0–3 min</td></tr>
+    </table><p>Arvostellaan lenkkien keskiarvona. Pituus tai etäisyys on täytyttävä; nopeus ratkaisee välin ylä-/alapään. LEL: 8/7/6/5/4 p. Muuta riistaa seuranneet lenkit eivät vaikuta.</p></details>`;
+  case 'loyto': return `
+    <div class="grid">
+      <div><label>Löytömatka km</label><input inputmode="decimal" data-f="s.loyto.matka"></div>
+      <div><label>Suora etäisyys km</label><input inputmode="decimal" data-f="s.loyto.suora"></div>
+    </div>
+    <label class="chk"><input type="checkbox" data-f="s.loyto.toteamaton"> Toteamaton löytö (max 8 p)</label>
+    <label class="chk"><input type="checkbox" data-f="s.loyto.avust"> Koiraa avustettu löydössä (−2 p)</label>
+    <details><summary>Arvosteluperusteet</summary><table>
+      <tr><th>p</th><th>Löytö</th><th>Matka</th><th>tai suora</th></tr>
+      <tr><td>9–10</td><td>nopeasti</td><td>&gt; 2 km</td><td>≥ 0,8 km</td></tr>
+      <tr><td>7–8</td><td>melko nopeasti</td><td>&gt; 1,5 km</td><td>≥ 0,6 km</td></tr>
+      <tr><td>5–6</td><td>pidemmän ajan kuluttua</td><td>≥ 1,0 km</td><td>≥ 0,4 km</td></tr>
+      <tr><td>3–4</td><td>pitkän ajan kuluttua</td><td>&lt; 1,0 km</td><td>≥ 0,3 km</td></tr>
+      <tr><td>0–2</td><td colspan="3">hirvi törmää ryhmään / näkyvillä / ryhmä avustaa, suora &lt; 0,3 km</td></tr>
+    </table><p>Avustamista: koiran vieminen jäljelle, näköhirvelle tai hajuvanaan. Vähintään 500 m etäisyys ei ole avustamista.</p></details>`;
+  case 'lh': {
+    const n = Math.max(s.lh.loydot.length, TL.loydot.length);
+    const rows = [];
+    for (let i=0;i<n;i++){
+      if (!s.lh.loydot[i]) s.lh.loydot[i] = { sade:'0.2' };
+      const a = TL.loydot[i];
+      rows.push(`<div class="sub"><div class="hd">Löytö ${i+1}${a?` · ${hhmm(a.t)}`:''}${!a?`<button class="btn sm ghost danger x" data-del-loyto="${i}">Poista</button>`:''}</div><div class="grid">
+        <div><label>Löytöhaukku min</label><input inputmode="numeric" data-f="s.lh.loydot.${i}.min" ${ph(a?a.min:'')}></div>
+        <div><label>Säde löytöpaikasta</label><select data-f="s.lh.loydot.${i}.sade"><option value="0.2">≤ 0,2 km</option><option value="0.4">≤ 0,4 km</option><option value="0.6">≤ 0,6 km</option></select></div>
+      </div></div>`);
+    }
+    return rows.join('') + `<button class="btn sm" id="addLoyto">+ Lisää löytö</button>
+    <details><summary>Arvosteluperusteet</summary><table>
+      <tr><th>Säde</th><th class="n">10–29</th><th class="n">30–59</th><th class="n">60–89</th><th class="n">≥ 90 min</th></tr>
+      <tr><td>0,2 km</td><td class="n">5</td><td class="n">8</td><td class="n">9</td><td class="n">10</td></tr>
+      <tr><td>0,4 km</td><td class="n">4</td><td class="n">7</td><td class="n">8</td><td class="n">9</td></tr>
+      <tr><td>0,6 km</td><td class="n">3</td><td class="n">6</td><td class="n">7</td><td class="n">8</td></tr>
+    </table><p>2–9 min = 2 p, 0–1 min = 1 p. Useista löydöistä keskiarvo. Katkeaa karkkoon, siirtyvään haukkuun, yhteydenottoon tai kun ollaan yli 0,6 km löytöpaikasta. Alle 2 min tauot eivät katkaise.</p></details>`;
+  }
+  case 'ht': return `
+    <div class="grid">
+      <div><label>Ampumatilaisuudet</label><input inputmode="numeric" data-f="s.ht.amp" ${ph(TL.amp)}></div>
+      <div><label>Karkot</label><input inputmode="numeric" data-f="s.ht.karkot" ${ph(TL.karkot)}></div>
+      <div><label>Työskentelyaika min</label><input inputmode="numeric" data-f="s.ht.tyo" ${ph(TL.tyo)}></div>
+      <div><label>Seisontahaukku (KH) min</label><input inputmode="numeric" data-f="s.ht.seis" ${ph(TL.kh)}></div>
+    </div>
+    <details><summary>Arvosteluperusteet</summary><table>
+      <tr><th>p</th><th class="n">Amp.</th><th class="n">Karkot</th><th class="n">Työ min</th><th class="n">KH min</th></tr>
+      <tr><td>10</td><td class="n">≥ 3</td><td class="n">≥ 3</td><td class="n">300</td><td class="n">200</td></tr>
+      <tr><td>9</td><td class="n">≥ 3</td><td class="n">≥ 3</td><td class="n">270</td><td class="n">180</td></tr>
+      <tr><td>8</td><td class="n">≥ 2</td><td class="n">≥ 2</td><td class="n">240</td><td class="n">150</td></tr>
+      <tr><td>7</td><td class="n">≥ 2</td><td class="n">≥ 2</td><td class="n">200</td><td class="n">120</td></tr>
+      <tr><td>6</td><td class="n">≥ 1</td><td class="n">≥ 1</td><td class="n">120</td><td class="n">90</td></tr>
+      <tr><td>5</td><td colspan="4">seisontahaukku ≥ 90 min</td></tr>
+      <tr><td>3–4</td><td colspan="4">seisontahaukku ≥ 60 min tai haukkuaika ≥ 120 min (siirtyvä mukaan)</td></tr>
+      <tr><td>1–2</td><td colspan="4">seisontahaukku ≥ 20 min tai haukkuaika ≥ 60 min</td></tr>
+      <tr><td>0</td><td colspan="4">seisontahaukku &lt; 20 min ja haukkuaika &lt; 60 min</td></tr>
+      <tr><td>–</td><td colspan="4">ei seisontahaukkua</td></tr>
+    </table><p>Ampumatilaisuus: tuomari paikantaa hirven alle 100 m:n päästä kiinteän haukun aikana. Ampumatilaisuutta yritetään n. 90 min haukkuajan jälkeen, karkotukset 30 min haukkuajan jälkeen.</p></details>`;
+  case 'seur': return `
+    <div class="grid">
+      <div><label>Seurattu matka km${cur.info.paikannin?'':' (paikannin)'}</label><input inputmode="decimal" data-f="s.seur.km"></div>
+      <div><label>Seurattu aika min</label><input inputmode="numeric" data-f="s.seur.min" ${ph(TL.seurMin)}></div>
+    </div>
+    <details><summary>Arvosteluperusteet</summary><table>
+      <tr><th>p</th><th>Matka</th><th>tai aika</th></tr>
+      ${[[10,'≥ 5','> 60'],[9,'≥ 4,5','50–59'],[8,'≥ 4','40–49'],[7,'≥ 3,5','30–39'],[6,'≥ 3','20–29'],[5,'≥ 2,5','10–19'],[4,'≥ 2','7–9'],[3,'≥ 1,5','5–6'],[2,'≥ 1','3–4'],[1,'≥ 0,5','1–2']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]} km</td><td>${r[2]} min</td></tr>`).join('')}
+      <tr><td>0</td><td colspan="2">ei seuraa pakenevaa hirveä</td></tr>
+    </table><p>Matka todetun reitin mukaan, ei linnuntietä. Siirtyvä haukku ei ole seuraamista. Ilman paikanninta käytetään aikoja. Aika-arvio ajanotosta = karkosta seuraavan haukun alkuun.</p></details>`;
+  case 'pys': return `
+    ${TL.uusinta.length?`<p class="muted" style="margin:0 0 8px">Ajanoton uusintahaukut: ${TL.uusinta.map(u=>u.type+' '+u.min+' min').join(', ')}</p>`:''}
+    <select data-f="s.pys.row"><option value="">– valitse –</option>${H.PYS_ROWS.map(r=>`<option value="${r[0]}">${r[0]} p · ${r[1]}</option>`).join('')}</select>
+    <details><summary>Arvosteluperusteet</summary><p>Uusintahaukun on kestettävä vähintään 10 min ja haukkujen välissä on oltava karkko. KH = kiinteä haukku, UH = siirtyvä haukku. Kiitettäviin pisteisiin vaaditaan haukku erän lopussa. Erä päättyy, kun 300 min on kulunut ensimmäisestä löydöstä tai pimeys keskeyttää.</p></details>`;
+  case 'ha': return `
+    <div class="grid"><div><label>Haukkuaika min</label><input inputmode="numeric" data-f="s.ha.min" ${ph(TL.hauk)}></div>
+    <div class="muted" style="align-self:end">KH ${TL.kh} + UH ${TL.sh} min ajanotosta</div></div>
+    <details><summary>Arvosteluperusteet</summary><table><tr><th>min</th>${H.HA_T.map(t=>`<td class="n">${t}</td>`).join('')}</tr><tr><th>p</th>${H.HA_T.map((t,i)=>`<td class="n">${i+1}</td>`).join('')}</tr></table>
+    <p>Kiinteä ja siirtyvä haukku minuutin tarkkuudella, alle 2 min tauot mukaan. Useiden löytöjen haukkuajat yhteen. Alle 20 min = 0 p.</p></details>`;
+  case 'kuu': return `<p class="muted" style="margin:0">Tuomarin arvio pistevalitsimella. Huomioi sää, tuuli, lumi ja maasto.</p>
+    <details><summary>Arvosteluperusteet</summary><p>9–10 kiitettävä, 7–8 hyvä, 5–6 tyydyttävä, 3–4 välttävä, 1–2 heikko. Kiitettäviin vaaditaan ≥ 180 min haukkuaikaa. Alle 20 min haukkuajalla ei arvostella.</p></details>`;
+  case 'tih': return `
+    <div><label>Haukahdukset / täysi minuutti (useita mittauksia pilkulla erotettuna)</label><input inputmode="text" data-f="s.tih.counts" placeholder="esim. 72, 68, 80"></div>
+    <div style="margin-top:8px"><label>Tasaisuus</label><select data-f="s.tih.tas"><option value="tasainen">Tasainen</option><option value="jaksottainen">Jaksottainen</option><option value="tauot">Häiritseviä taukoja</option></select></div>
+    <details><summary>Arvosteluperusteet</summary><table>
+      <tr><th>/min</th><th class="n">Tasainen</th><th class="n">Jaksott.</th><th class="n">Taukoja</th></tr>
+      ${[['≥ 75',10,9,7],['65–74',9,8,6],['55–64',8,7,5],['45–54',7,5,4],['25–44',4,3,2],['< 25',2,1,0]].map(r=>`<tr><td>${r[0]}</td><td class="n">${r[1]}</td><td class="n">${r[2]}</td><td class="n">${r[3]}</td></tr>`).join('')}
+    </table><p>Kiitettäviin vaaditaan ≥ 180 min haukkuaikaa. Alle 20 min ei arvostella.</p></details>`;
+  case 'tot': return `
+    <div><label>a) Haun aikana (0–2)</label><select data-f="s.tot.a"><option value="">–</option>
+      <option value="2">2 · kytketään lenkiltä palatessa / kutsutaan ≥ 0,1 km:n päästä</option><option value="1">1 · löytö ensimmäiseltä lenkiltä</option><option value="0">0 · ei voitu kytkeä</option></select></div>
+    <div style="margin-top:8px"><label>b) Hirvityöskentelyn aikana (0–5)</label><select data-f="s.tot.b"><option value="">–</option>
+      <option value="5">5 · kytkeytyy heti kutsusta, testattu 2× (1. ennen 150 min)</option><option value="4">4 · kytkeytyy kerran kutsusta</option>
+      <option value="3">3 · epäröi, mutta tulee ja ottaa yhteyttä seuraamisen aikana</option><option value="2">2 · kytketään toistuvien yritysten jälkeen / palaa reittiään</option>
+      <option value="1">1 · työskentelee erän jälkeen, ei kytkettävissä</option><option value="0">0 · ei kytkeydy eikä työskentele erän päättyessä</option></select></div>
+    <div style="margin-top:8px"><label>c) Erän lopussa (0–3)</label><select data-f="s.tot.c"><option value="">–</option>
+      <option value="3">3 · kytkeytyy kutsusta haukusta</option><option value="2">2 · kytkeytyy seuraamisesta / aloittaa haukun ja tulee kutsusta</option>
+      <option value="1">1 · haukkuu, mutta ei kytkettävissä</option><option value="0">0 · ei haukku erän päättyessä / noudetaan</option></select></div>
+    <div class="grid" style="margin-top:8px">
+      <div><label>Oma-aloitteiset yhteydenotot</label><input inputmode="numeric" data-f="s.tot.yht" placeholder="0"></div>
+      <label class="chk" style="align-self:end"><input type="checkbox" data-f="s.tot.fail"> Kutsu epäonnistui</label>
+    </div>
+    <details><summary>Arvosteluperusteet</summary><p>Täydet 10 p vaativat, ettei yhtään kutsua ole epäonnistunut. Jos työskentelyaika on alle 240 min tai koira ottaa oma-aloitteisesti yhteyttä yli kaksi kertaa, enimmäispistemäärä on 6.</p></details>`;
+  }
+  return '';
+}
+function renderScore(){
+  $('#cats').innerHTML = H.CATS.map(c => `
+    <div class="card" id="cat-${c.id}">
+      <h2>${c.id}. ${c.name} <span class="k">× ${String(c.k).replace('.',',')}</span><span class="w" data-w="${c.id}"></span></h2>
+      ${catBody(c)}
+      <div class="pts" data-pts="${c.id}">
+        <button data-v="-">–</button>${Array.from({length:11},(_,i)=>`<button data-v="${i}">${i}</button>`).join('')}
+      </div>
+      <div class="sugg-line" data-sl="${c.id}"></div>
+    </div>`).join('');
+  bindFields($('#cats'));
+  $$('.pts').forEach(row => row.onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const id = +row.dataset.pts; const v = b.dataset.v === '-' ? '-' : +b.dataset.v;
+    const sg = suggestions()[id];
+    cur.pts[id] = (v === sg.p) ? null : v; // ehdotuksen valinta = seuraa ehdotusta
+    save(); refresh();
+  });
+  $('#cats').onclick = e => {
+    const t = e.target;
+    if (t.id === 'addLenkki'){ cur.s.haku.lenkit.push({}); save(); renderScore(); }
+    else if (t.dataset.delLenkki !== undefined){ cur.s.haku.lenkit.splice(+t.dataset.delLenkki,1); save(); renderScore(); refresh(); }
+    else if (t.id === 'addLoyto'){ cur.s.lh.loydot.push({sade:'0.2'}); save(); renderScore(); }
+    else if (t.dataset.delLoyto !== undefined){ cur.s.lh.loydot.splice(+t.dataset.delLoyto,1); save(); renderScore(); refresh(); }
+    else if (t.dataset.reset){ cur.pts[t.dataset.reset] = null; save(); refresh(); }
+  };
+  refreshScore(totals());
+}
+function refreshScore(t){
+  H.CATS.forEach(c => {
+    const sg = t.sg[c.id], fp = t.fp[c.id], man = cur.pts[c.id];
+    const row = $(`[data-pts="${c.id}"]`); if (!row) return;
+    $$('button', row).forEach(b => {
+      const v = b.dataset.v === '-' ? '-' : +b.dataset.v;
+      b.classList.toggle('on', v === fp);
+      b.classList.toggle('sugg', v === sg.p);
+    });
+    const isMan = man !== undefined && man !== null;
+    let html = sg.p === null || sg.p === undefined ? (sg.judge ? 'Valitse pisteet' : (sg.note || '')) : `Ehdotus <b>${sg.p}</b>${sg.note ? ' · ' + esc(sg.note) : ''}`;
+    if (isMan) html += `<span class="manual">käsin</span> <button class="btn sm ghost" data-reset="${c.id}">Palauta ehdotus</button>`;
+    if (isMan && typeof man === 'number' && sg.cap !== null && sg.cap !== undefined && man > sg.cap) html += `<div class="warn">Sääntöjen mukainen enimmäispistemäärä on ${sg.cap}.</div>`;
+    $(`[data-sl="${c.id}"]`).innerHTML = html;
+    if (c.key === 'kuu'){
+      // kuuluvuus: tuomarin valinta tallennetaan s.kuu.p:hen
+    }
+    const w = $(`[data-w="${c.id}"]`);
+    w.textContent = typeof fp === 'number' ? fmt(fp * c.k) + ' p' : (fp === '-' ? '–' : '');
+  });
+}
+// kuuluvuuden valinta = tuomarin arvio → tallennetaan myös s.kuu.p
+document.addEventListener('click', e => {
+  const row = e.target.closest('[data-pts="8"]'); const b = e.target.closest('button');
+  if (row && b){ cur.s.kuu.p = b.dataset.v === '-' ? '' : b.dataset.v; save(); }
+}, true);
+
+/* ---------- TULOS ---------- */
+const PRIZE_TXT = p => p ? `${p}. palkinto` : 'Ei palkintoa';
+function renderResult(){
+  const t = totals();
+  $('#resTotal').textContent = fmt(t.total);
+  const pz = $('#resPrize'); pz.textContent = cur.status === 'hylatty' ? 'Hylätty' : cur.status === 'suljettu' ? 'Suljettu' : cur.status === 'luopui' ? 'Luopui' : PRIZE_TXT(t.prize);
+  pz.classList.toggle('none', !t.prize);
+  const notes = [];
+  if (t.missing.length) notes.push('Arvostelematta: ' + t.missing.map(c=>c.id+'. '+c.name).join(', '));
+  if (t.zero && cur.status !== 'hylatty') notes.push(`Pisteet ennen tilaa ${fmt(t.raw)}`);
+  notes.push('Rajat: 1. palk. 70 · 2. palk. 60 · 3. palk. 50 p');
+  $('#resNote').innerHTML = notes.map(esc).join('<br>');
+  $('#resTable').innerHTML = `<tr><th>Arvosteluperuste</th><th class="n">p</th><th class="n">×</th><th class="n">Yht.</th></tr>` +
+    H.CATS.map(c => { const p = t.fp[c.id]; return `<tr><td>${c.id}. ${c.name}</td><td class="n">${p===null||p===undefined?'':p}</td><td class="n">${String(c.k).replace('.',',')}</td><td class="n">${typeof p==='number'?fmt(p*c.k):''}</td></tr>`; }).join('') +
+    `<tr><th>Loppupisteet</th><th></th><th></th><th class="n">${fmt(t.total)}</th></tr>`;
+  const v = vals();
+  $('#tieInfo').innerHTML = `1. Työskentelyaika <b>${v.tyo} min</b> · 2. Haukkuaika <b>${v.hauk} min</b> · 3. Kokonaisvaikutelma`;
+  bindFields($('#tab-result'));
+  buildPrint(t);
+}
+function summaryText(t){
+  const i = cur.info, v = vals();
+  const L = [];
+  L.push(`HIRVENHAUKKUKOE ${i.pvm||''} ${i.paikka||''}`.trim());
+  L.push(`Koira: ${i.koira||''} ${i.reknro?'('+i.reknro+')':''} ${i.rotu||''} ${i.sukup||''}`.trim());
+  if (i.omistaja || i.ohjaaja) L.push(`Omistaja: ${i.omistaja||''}  Ohjaaja: ${i.ohjaaja||''}`);
+  L.push(`Ylituomari: ${i.ylituomari||''}  Palkintotuomari: ${i.tuomari||''}`);
+  L.push('');
+  H.CATS.forEach(c => { const p = t.fp[c.id]; L.push(`${String(c.id).padStart(2)}. ${c.name.padEnd(30)} ${String(p??'').padStart(2)} × ${String(c.k).replace('.',',')} = ${typeof p==='number'?fmt(p*c.k):''}`); });
+  L.push('');
+  L.push(`Hakuaika ${TL.haku} min · Työskentelyaika ${v.tyo} min · Haukkuaika ${v.hauk} min (KH ${pick(cur.s.ht.seis,TL.kh)}) · Karkot ${v.karkot} · Ampumatilaisuudet ${v.amp}`);
+  if (cur.status !== 'normaali') L.push(`Tila: ${cur.status}${cur.statusSyy?' – '+cur.statusSyy:''}`);
+  L.push(`LOPPUPISTEET ${fmt(t.total)} – ${PRIZE_TXT(t.prize)}`);
+  if (cur.huom) L.push('', 'Huomautukset: ' + cur.huom);
+  return L.join('\n');
+}
+function buildPrint(t){
+  $('#printsheet').innerHTML = `<h1>Hirvenhaukkukoe – koepöytäkirja</h1><pre style="font-family:ui-monospace,Menlo,monospace;white-space:pre-wrap">${esc(summaryText(t))}</pre>
+  <h3 style="color:#000">Tapahtumat</h3><table>${[...cur.events].sort((a,b)=>a.t-b.t).map(e=>`<tr><td>${hhmm(e.t)}</td><td>${EV[e.type].l}</td><td>${esc(e.note)}</td></tr>`).join('')}</table>
+  <p style="margin-top:30px">Palkintotuomari: ______________________ &nbsp; Ylituomari: ______________________</p>`;
+}
+$('#btnCopy').onclick = async () => {
+  const txt = summaryText(totals());
+  try { await navigator.clipboard.writeText(txt); toast('Kopioitu leikepöydälle'); }
+  catch(e){ showText('Yhteenveto', txt); }
+};
+$('#btnPrint').onclick = () => { try { window.print(); } catch(e){ toast('Tulostus ei ole käytettävissä tässä näkymässä'); } };
+$('#btnExport').onclick = () => {
+  const data = JSON.stringify(cur, null, 2);
+  if (window.self !== window.top) return showText('JSON (kopioi talteen)', data);
+  try {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([data], {type:'application/json'}));
+    a.download = `hirv-${(cur.info.koira||'koe').replace(/\W+/g,'_')}-${cur.info.pvm||''}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch(e){ showText('JSON', data); }
+};
+
+/* ---------- kokeiden lista ---------- */
+$('#btnList').onclick = () => {
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<div class="sheet"><div class="row" style="margin-bottom:10px"><b style="flex:1;font-size:17px">Kokeet</b>
+    <button class="btn pri sm" data-a="new">+ Uusi koe</button><label class="btn sm" style="margin:0">Tuo JSON<input type="file" accept=".json,application/json" hidden data-a="import"></label>
+    <button class="btn sm ghost" data-a="close">Sulje</button></div>
+    <div class="list">${kokeet.map(k => { const tot = scoreOf(k); return `<div class="item" data-id="${k.id}">
+      <div class="m"><b>${esc(k.info.koira || 'Nimetön koira')}${k.id===cur.id?' ·  avoinna':''}</b><span>${esc(k.info.pvm||'')} ${esc(k.info.paikka||'')} · ${fmt(tot)} p</span></div>
+      <button class="btn sm" data-a="open">Avaa</button><button class="btn sm ghost danger" data-a="del">✕</button></div>`; }).join('')}</div>
+    <p class="muted">Tiedot tallentuvat tähän laitteeseen. Vie tärkeät kokeet JSON-tiedostoksi varmuuskopioksi.</p></div>`;
+  document.body.appendChild(m);
+  m.onclick = e => {
+    if (e.target === m) return m.remove();
+    const a = e.target.closest('[data-a]'); if (!a) return;
+    const id = e.target.closest('.item')?.dataset.id;
+    if (a.dataset.a === 'close') m.remove();
+    if (a.dataset.a === 'new'){ cur = blank(); kokeet.unshift(cur); save(); m.remove(); reload(); showTab('info'); }
+    if (a.dataset.a === 'open'){ cur = kokeet.find(k=>k.id===id); save(); m.remove(); reload(); }
+    if (a.dataset.a === 'del'){ askConfirm('Poistetaanko koe pysyvästi?', () => { kokeet = kokeet.filter(k=>k.id!==id); if (cur.id===id){ cur = kokeet[0] || blank(); if (!kokeet.length) kokeet.push(cur); } save(); m.remove(); reload(); }); }
+  };
+  $('[data-a=import]', m).onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    f.text().then(txt => { const k = JSON.parse(txt); if (!k.s || !k.info) throw 0; k.id = uid(); kokeet.unshift(k); cur = k; save(); m.remove(); reload(); toast('Koe tuotu'); })
+      .catch(() => toast('Tiedostoa ei voitu lukea'));
+  };
+};
+function scoreOf(k){ const keep = cur; cur = k; const tl = TL; TL = H.timeline(k.events, Date.now()); const t = totals().total; cur = keep; TL = tl; return t; }
+function reload(){ TL = H.timeline(cur.events, Date.now()); bindFields(); refreshHeader(); showTab(tab); }
+
+/* ---------- apuikkunat ---------- */
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('show'), 1800); }
+function askConfirm(msg, ok){
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<div class="sheet"><p style="font-size:16px">${esc(msg)}</p><div class="row"><button class="btn danger" data-y>Poista</button><button class="btn" data-n>Peruuta</button></div></div>`;
+  document.body.appendChild(m);
+  $('[data-y]', m).onclick = () => { m.remove(); ok(); };
+  $('[data-n]', m).onclick = () => m.remove();
+  m.onclick = e => { if (e.target === m) m.remove(); };
+}
+function showText(title, txt){
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<div class="sheet"><b>${esc(title)}</b><textarea style="min-height:50vh;margin-top:8px;font-family:ui-monospace,monospace;font-size:13px">${esc(txt)}</textarea><button class="btn" style="margin-top:8px">Sulje</button></div>`;
+  document.body.appendChild(m); $('button', m).onclick = () => m.remove();
+}
+
+/* ---------- käynnistys ---------- */
+reload();
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  try { navigator.serviceWorker.register('sw.js').catch(()=>{}); } catch(e){}
+}
+})();
+</script>
+</body>
+</html>
