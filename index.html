@@ -32,7 +32,7 @@ header .prize{font-size:12px;background:var(--amber);color:#1d1408;border-radius
 header button{background:transparent;border:1px solid #ffffff44;color:inherit;border-radius:8px;padding:6px 10px;font-size:14px}
 main{max-width:760px;margin:0 auto;padding:var(--pad)}
 nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:10;background:var(--card);border-top:1px solid var(--line);
-  display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+  display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
 nav.tabs button{background:none;border:0;padding:10px 4px 12px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
 nav.tabs button svg{width:22px;height:22px}
 nav.tabs button.on{color:var(--pine2);font-weight:700}
@@ -182,6 +182,36 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
     </div>
   </section>
 
+  <!-- REITIT -->
+  <section id="tab-map" class="hidden">
+    <div class="card">
+      <h2>Ryhmän GPS-reitti <span class="k">tämä puhelin</span></h2>
+      <div class="row"><button class="btn pri" id="btnGps">Aloita seuranta</button><span class="muted" id="gpsStatus"></span></div>
+      <label class="chk"><input type="checkbox" id="chkEvPos"> Tallenna sijainti jokaiseen tapahtumaan</label>
+      <p class="muted" style="margin:4px 0 0">Pidä sovellus auki ja näyttö päällä seurannan aikana – selain ei saa sijaintia taustalla. Sovellus pyytää näyttöä pysymään päällä.</p>
+    </div>
+    <div class="card">
+      <h2>Koiran reitti <span class="k">paikantimesta</span></h2>
+      <div class="row">
+        <label class="btn" style="margin:0">Tuo GPX / KML<input type="file" accept=".gpx,.kml,application/gpx+xml,application/vnd.google-earth.kml+xml,text/xml,application/xml" hidden id="dogFile"></label>
+        <button class="btn sm ghost danger hidden" id="btnDogDel">Poista koiran reitti</button>
+      </div>
+      <div class="muted" id="dogInfo" style="margin-top:8px"></div>
+      <p class="muted" style="margin:6px 0 0">Vie koiran jälki paikantimesta (esim. Garmin, Tracker, Ultracom) GPX- tai KML-tiedostona ja tuo se tähän. Aikaleimat yhdistetään ajanoton tapahtumiin.</p>
+    </div>
+    <div class="card">
+      <h2>Kartta</h2>
+      <canvas id="mapCanvas" style="width:100%;aspect-ratio:1/1;background:var(--bg);border-radius:10px;border:1px solid var(--line);touch-action:none"></canvas>
+      <div class="muted" style="margin-top:6px"><span class="tag" style="background:#3b6fb6"></span>Ryhmä &nbsp; <span class="tag" style="background:#d9822b"></span>Koira &nbsp; <span class="tag" style="background:#7a5a2a"></span>Löytö &nbsp; <span class="tag" style="background:#a4452c"></span>Karkko</div>
+    </div>
+    <div class="card">
+      <h2>Lasketut matkat</h2>
+      <div id="distTable"></div>
+      <p class="muted">Arvot siirtyvät arvosteluun automaattisesti (harmaat ehdotusarvot). Käsin syötetty arvo ohittaa ne.</p>
+    </div>
+    <div class="row"><button class="btn" id="btnGpx">Vie reitit GPX</button><button class="btn ghost danger" id="btnGroupDel">Poista ryhmän reitti</button></div>
+  </section>
+
   <!-- ARVOSTELU -->
   <section id="tab-score" class="hidden">
     <p class="muted" style="margin-top:0">Sovellus ehdottaa pisteet sääntöjen taulukoista (vihreä kehys). Tuomari voi aina valita toisin. Tyhjät kentät käyttävät ajanoton arvoja (näkyvät harmaana).</p>
@@ -228,6 +258,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 <nav class="tabs">
   <button data-tab="info" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Tiedot</button>
   <button data-tab="time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>Ajanotto</button>
+  <button data-tab="map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>Reitit</button>
   <button data-tab="score"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16M7 16V9M12 16V5M17 16v-4"/></svg>Arvostelu</button>
   <button data-tab="result"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="9" r="6"/><path d="M8.5 14 7 22l5-3 5 3-1.5-8"/></svg>Tulos</button>
 </nav>
@@ -236,6 +267,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 <div class="toast" id="toast"></div>
 
 <script src="rules.js"></script>
+<script src="geo.js"></script>
 <script>
 (function(){
 'use strict';
@@ -276,6 +308,9 @@ function setP(o, p, v){ const ks=p.split('.'); let x=o; ks.slice(0,-1).forEach(k
 
 /* ---------- laskenta ---------- */
 let TL = H.timeline(cur.events, Date.now());
+let TRACKS = { group: [], dog: [] };
+let GEOD = window.GEO.distances(TL, cur.events, [], []);
+const recompute = () => { TL = H.timeline(cur.events, Date.now()); GEOD = window.GEO.distances(TL, cur.events, TRACKS.group, TRACKS.dog); };
 const pick = (v, auto) => (v === '' || v === undefined || v === null) ? auto : +v;
 function vals(){
   const s = cur.s;
@@ -287,15 +322,25 @@ function vals(){
 }
 function suggestions(){
   const v = vals(), s = cur.s;
-  const lhState = { loydot: s.lh.loydot.length ? s.lh.loydot.map((l,i)=>({min: pick(l.min, TL.loydot[i] ? TL.loydot[i].min : null), sade:l.sade||'0.2'}))
-                                               : TL.loydot.map(l=>({min:l.min, sade:'0.2'})) };
+  const n = Math.max(s.lh.loydot.length, TL.loydot.length);
+  const lhState = { loydot: Array.from({length:n}, (_,i) => { const l = s.lh.loydot[i] || {}; return { min: pick(l.min, TL.loydot[i] ? TL.loydot[i].min : null), sade: autoSade(i, l) }; }) };
   return {
-    1: H.haku(s.haku), 2: H.loyto(s.loyto), 3: H.lh(lhState),
+    1: H.haku(mergedHaku()), 2: H.loyto(mergedLoyto()), 3: H.lh(lhState),
     4: H.ht({amp:v.amp, karkot:v.karkot, tyo:v.tyo, seis:v.seis, hauk:v.hauk}),
-    5: H.seur({km:s.seur.km, min: (s.seur.km===''||s.seur.km==null) ? v.seurMin : s.seur.min}),
+    5: H.seur((() => { const km = pick(s.seur.km, GEOD.seurKm); return { km, min: km === null || km === undefined ? v.seurMin : s.seur.min }; })()),
     6: H.pys(s.pys), 7: H.ha(v.hauk), 8: H.kuu(s.kuu, v.hauk), 9: H.tih(s.tih, v.hauk), 10: H.tot(s.tot, v.tyo)
   };
 }
+function mergedHaku(){
+  const s = cur.s.haku, g = GEOD.lenkit, n = Math.max(s.lenkit.length, g.length);
+  return { lel: s.lel, lenkit: Array.from({length:n}, (_,i) => { const m = s.lenkit[i] || {}, a = g[i] || {};
+    return { km: pick(m.km, a.km), dist: pick(m.dist, a.dist), min: pick(m.min, a.min), noud: m.noud, eihae: m.eihae }; }) };
+}
+function mergedLoyto(){
+  const s = cur.s.loyto, g = GEOD.loyto || {};
+  return { matka: pick(s.matka, g.matka), suora: pick(s.suora, g.suora), toteamaton: s.toteamaton, avust: s.avust };
+}
+function autoSade(i, l){ return (l && l.sade) || window.GEO.sadeBucket(GEOD.lhSade[i]) || '0.2'; }
 function finalPts(sg){
   const out = {};
   H.CATS.forEach(c => {
@@ -319,9 +364,10 @@ let tab = 'info';
 function showTab(t){
   tab = t;
   $$('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
-  ['info','time','score','result'].forEach(x => $('#tab-'+x).classList.toggle('hidden', x !== t));
+  ['info','time','map','score','result'].forEach(x => $('#tab-'+x).classList.toggle('hidden', x !== t));
   if (t === 'time') renderTime();
   if (t === 'score') renderScore();
+  if (t === 'map') renderMap();
   if (t === 'result') renderResult();
   window.scrollTo(0,0);
 }
@@ -349,6 +395,7 @@ document.addEventListener('change', e => {
 /* ---------- otsikko ---------- */
 function refreshHeader(){
   const t = totals();
+  if (cur.total !== t.total) { cur.total = t.total; save(); }
   $('#hdrTitle').textContent = cur.info.koira || 'HIRV arvostelukortti';
   $('#hdrTotal').textContent = fmt(t.total);
   const hp = $('#hdrPrize');
@@ -357,7 +404,7 @@ function refreshHeader(){
   return t;
 }
 function refresh(){
-  TL = H.timeline(cur.events, Date.now());
+  recompute();
   const t = refreshHeader();
   if (tab === 'score') refreshScore(t);
   if (tab === 'time') refreshStats();
@@ -371,9 +418,10 @@ function renderTime(){
   renderEvList(); refreshStats();
 }
 function addEvent(type){
-  cur.events.push({ id: uid(), t: Date.now(), type, note:'' });
+  const ne = { id: uid(), t: Date.now(), type, note:'' };
+  cur.events.push(ne); stampEvent(ne);
   if (navigator.vibrate) try{ navigator.vibrate(30); }catch(e){}
-  save(); TL = H.timeline(cur.events, Date.now()); renderEvList(); refreshStats(); refreshHeader();
+  save(); recompute(); renderEvList(); refreshStats(); refreshHeader();
   toast(EV[type].l + ' ' + hhmm(Date.now()));
 }
 function renderEvList(){
@@ -381,7 +429,7 @@ function renderEvList(){
   $('#evlist').innerHTML = ev.length ? ev.map(e => `
     <div class="ev" data-id="${e.id}">
       <input type="time" value="${hhmm(e.t)}" data-evt="time">
-      <div><div class="t"><span class="tag" style="background:${EV_COLORS[e.type]}"></span>${EV[e.type].l}</div>
+      <div><div class="t"><span class="tag" style="background:${EV_COLORS[e.type]}"></span>${EV[e.type].l}${e.pos?' <span class="muted" title="sijainti tallennettu">📍</span>':''}</div>
         <input placeholder="muistiinpano" value="${esc(e.note)}" data-evt="note" style="padding:4px 6px;font-size:13px;margin-top:3px"></div>
       <button class="btn sm ghost danger" data-evt="del" aria-label="Poista">✕</button>
     </div>`).join('') : '<p class="muted">Ei tapahtumia. Aloita irtilaskusta.</p>';
@@ -418,16 +466,20 @@ const ph = v => `placeholder="${v ?? ''}"`;
 function catBody(c){
   const s = cur.s;
   switch(c.key){
-  case 'haku': return `
+  case 'haku': {
+    const g = GEOD.lenkit, nL = Math.max(s.haku.lenkit.length, g.length);
+    const idx = Array.from({length:nL}, (_,i)=>i);
+    return `
     <label class="chk"><input type="checkbox" data-f="s.haku.lel" data-rerender="1"> Löytö ensimmäiseltä hakulenkiltä (LEL, max 8 p)</label>
-    ${s.haku.lenkit.map((l,i)=>`<div class="sub"><div class="hd">Lenkki ${i+1}${s.haku.lenkit.length>1?`<button class="btn sm ghost danger x" data-del-lenkki="${i}">Poista</button>`:''}</div>
+    ${g[0] && g[0].loyto && !s.haku.lel ? '<p class="warn" style="margin-top:0">Ajanoton mukaan löytö tapahtui ensimmäiseltä lenkiltä.</p>' : ''}
+    ${idx.map(i=>{ const a = g[i] || {}; return `<div class="sub"><div class="hd">Lenkki ${i+1}${a.min!=null?` · ${a.min} min ajanotosta`:''}${!g[i] && nL>1?`<button class="btn sm ghost danger x" data-del-lenkki="${i}">Poista</button>`:''}</div>
       <div class="grid three">
-        <div><label>Pituus km</label><input inputmode="decimal" data-f="s.haku.lenkit.${i}.km"></div>
-        <div><label>Suurin etäisyys m</label><input inputmode="numeric" data-f="s.haku.lenkit.${i}.dist"></div>
-        <div><label>Kesto min</label><input inputmode="numeric" data-f="s.haku.lenkit.${i}.min"></div>
+        <div><label>Pituus km</label><input inputmode="decimal" data-f="s.haku.lenkit.${i}.km" ${ph(a.km)}></div>
+        <div><label>Suurin etäisyys m</label><input inputmode="numeric" data-f="s.haku.lenkit.${i}.dist" ${ph(a.dist)}></div>
+        <div><label>Kesto min</label><input inputmode="numeric" data-f="s.haku.lenkit.${i}.min" ${ph(a.min)}></div>
       </div>
       <label class="chk"><input type="checkbox" data-f="s.haku.lenkit.${i}.noud"> Noudettu (max 7 p)</label>
-      <label class="chk"><input type="checkbox" data-f="s.haku.lenkit.${i}.eihae"> Koira ei hae (0 p)</label></div>`).join('')}
+      <label class="chk"><input type="checkbox" data-f="s.haku.lenkit.${i}.eihae"> Koira ei hae (0 p)</label></div>`; }).join('')}
     <button class="btn sm" id="addLenkki">+ Lisää hakulenkki</button>
     <details><summary>Arvosteluperusteet</summary><table>
       <tr><th>p</th><th>Lenkit</th><th>Nopeus</th><th>Etäisyys</th><th>tai kesto</th></tr>
@@ -436,11 +488,11 @@ function catBody(c){
       <tr><td>5–6</td><td>≥ 1 km</td><td>tyydyttävä</td><td>≥ 400 m</td><td>5–10 min</td></tr>
       <tr><td>3–4</td><td>&lt; 1 km</td><td>välttävä</td><td>≥ 300 m</td><td>2–5 min</td></tr>
       <tr><td>1–2</td><td>&lt; 500 m</td><td>huono</td><td>&lt; 300 m</td><td>0–3 min</td></tr>
-    </table><p>Arvostellaan lenkkien keskiarvona. Pituus tai etäisyys on täytyttävä; nopeus ratkaisee välin ylä-/alapään. LEL: 8/7/6/5/4 p. Muuta riistaa seuranneet lenkit eivät vaikuta.</p></details>`;
+    </table><p>Arvostellaan lenkkien keskiarvona. Pituus tai etäisyys on täytyttävä; nopeus ratkaisee välin ylä-/alapään. LEL: 8/7/6/5/4 p. Muuta riistaa seuranneet lenkit eivät vaikuta.</p></details>`; }
   case 'loyto': return `
     <div class="grid">
-      <div><label>Löytömatka km</label><input inputmode="decimal" data-f="s.loyto.matka"></div>
-      <div><label>Suora etäisyys km</label><input inputmode="decimal" data-f="s.loyto.suora"></div>
+      <div><label>Löytömatka km</label><input inputmode="decimal" data-f="s.loyto.matka" ${ph(GEOD.loyto && GEOD.loyto.matka)}></div>
+      <div><label>Suora etäisyys km</label><input inputmode="decimal" data-f="s.loyto.suora" ${ph(GEOD.loyto && GEOD.loyto.suora)}></div>
     </div>
     <label class="chk"><input type="checkbox" data-f="s.loyto.toteamaton"> Toteamaton löytö (max 8 p)</label>
     <label class="chk"><input type="checkbox" data-f="s.loyto.avust"> Koiraa avustettu löydössä (−2 p)</label>
@@ -456,11 +508,12 @@ function catBody(c){
     const n = Math.max(s.lh.loydot.length, TL.loydot.length);
     const rows = [];
     for (let i=0;i<n;i++){
-      if (!s.lh.loydot[i]) s.lh.loydot[i] = { sade:'0.2' };
+      if (!s.lh.loydot[i]) s.lh.loydot[i] = {};
+      const gm = GEOD.lhSade[i], gb = window.GEO.sadeBucket(gm);
       const a = TL.loydot[i];
       rows.push(`<div class="sub"><div class="hd">Löytö ${i+1}${a?` · ${hhmm(a.t)}`:''}${!a?`<button class="btn sm ghost danger x" data-del-loyto="${i}">Poista</button>`:''}</div><div class="grid">
         <div><label>Löytöhaukku min</label><input inputmode="numeric" data-f="s.lh.loydot.${i}.min" ${ph(a?a.min:'')}></div>
-        <div><label>Säde löytöpaikasta</label><select data-f="s.lh.loydot.${i}.sade"><option value="0.2">≤ 0,2 km</option><option value="0.4">≤ 0,4 km</option><option value="0.6">≤ 0,6 km</option></select></div>
+        <div><label>Säde löytöpaikasta</label><select data-f="s.lh.loydot.${i}.sade"><option value="">${gb ? `Paikantimesta (${gm} m)` : 'Oletus ≤ 0,2 km'}</option><option value="0.2">≤ 0,2 km</option><option value="0.4">≤ 0,4 km</option><option value="0.6">≤ 0,6 km</option></select></div>
       </div></div>`);
     }
     return rows.join('') + `<button class="btn sm" id="addLoyto">+ Lisää löytö</button>
@@ -493,7 +546,7 @@ function catBody(c){
     </table><p>Ampumatilaisuus: tuomari paikantaa hirven alle 100 m:n päästä kiinteän haukun aikana. Ampumatilaisuutta yritetään n. 90 min haukkuajan jälkeen, karkotukset 30 min haukkuajan jälkeen.</p></details>`;
   case 'seur': return `
     <div class="grid">
-      <div><label>Seurattu matka km${cur.info.paikannin?'':' (paikannin)'}</label><input inputmode="decimal" data-f="s.seur.km"></div>
+      <div><label>Seurattu matka km</label><input inputmode="decimal" data-f="s.seur.km" ${ph(GEOD.seurKm)}></div>
       <div><label>Seurattu aika min</label><input inputmode="numeric" data-f="s.seur.min" ${ph(TL.seurMin)}></div>
     </div>
     <details><summary>Arvosteluperusteet</summary><table>
@@ -623,6 +676,8 @@ function summaryText(t){
   H.CATS.forEach(c => { const p = t.fp[c.id]; L.push(`${String(c.id).padStart(2)}. ${c.name.padEnd(30)} ${String(p??'').padStart(2)} × ${String(c.k).replace('.',',')} = ${typeof p==='number'?fmt(p*c.k):''}`); });
   L.push('');
   L.push(`Hakuaika ${TL.haku} min · Työskentelyaika ${v.tyo} min · Haukkuaika ${v.hauk} min (KH ${pick(cur.s.ht.seis,TL.kh)}) · Karkot ${v.karkot} · Ampumatilaisuudet ${v.amp}`);
+  const gl = GEOD;
+  if (gl.hasDog || gl.groupKm) L.push(`Matkat: hakulenkit ${gl.lenkit.map(l=>l.km!=null?fmt(l.km)+' km':'–').join(', ')} · löytömatka ${gl.loyto&&gl.loyto.matka!=null?fmt(gl.loyto.matka)+' km':'–'} · seuraaminen ${gl.seurKm!=null?fmt(gl.seurKm)+' km':'–'}`);
   if (cur.status !== 'normaali') L.push(`Tila: ${cur.status}${cur.statusSyy?' – '+cur.statusSyy:''}`);
   L.push(`LOPPUPISTEET ${fmt(t.total)} – ${PRIZE_TXT(t.prize)}`);
   if (cur.huom) L.push('', 'Huomautukset: ' + cur.huom);
@@ -640,14 +695,8 @@ $('#btnCopy').onclick = async () => {
 };
 $('#btnPrint').onclick = () => { try { window.print(); } catch(e){ toast('Tulostus ei ole käytettävissä tässä näkymässä'); } };
 $('#btnExport').onclick = () => {
-  const data = JSON.stringify(cur, null, 2);
-  if (window.self !== window.top) return showText('JSON (kopioi talteen)', data);
-  try {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([data], {type:'application/json'}));
-    a.download = `hirv-${(cur.info.koira||'koe').replace(/\W+/g,'_')}-${cur.info.pvm||''}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-  } catch(e){ showText('JSON', data); }
+  const data = JSON.stringify({ ...cur, tracks: TRACKS });
+  downloadFile(`hirv-${(cur.info.koira||'koe').replace(/\W+/g,'_')}-${cur.info.pvm||''}.json`, data, 'application/json', 'JSON');
 };
 
 /* ---------- kokeiden lista ---------- */
@@ -656,7 +705,7 @@ $('#btnList').onclick = () => {
   m.innerHTML = `<div class="sheet"><div class="row" style="margin-bottom:10px"><b style="flex:1;font-size:17px">Kokeet</b>
     <button class="btn pri sm" data-a="new">+ Uusi koe</button><label class="btn sm" style="margin:0">Tuo JSON<input type="file" accept=".json,application/json" hidden data-a="import"></label>
     <button class="btn sm ghost" data-a="close">Sulje</button></div>
-    <div class="list">${kokeet.map(k => { const tot = scoreOf(k); return `<div class="item" data-id="${k.id}">
+    <div class="list">${kokeet.map(k => { const tot = k.id === cur.id ? totals().total : (k.total ?? scoreOf(k)); return `<div class="item" data-id="${k.id}">
       <div class="m"><b>${esc(k.info.koira || 'Nimetön koira')}${k.id===cur.id?' ·  avoinna':''}</b><span>${esc(k.info.pvm||'')} ${esc(k.info.paikka||'')} · ${fmt(tot)} p</span></div>
       <button class="btn sm" data-a="open">Avaa</button><button class="btn sm ghost danger" data-a="del">✕</button></div>`; }).join('')}</div>
     <p class="muted">Tiedot tallentuvat tähän laitteeseen. Vie tärkeät kokeet JSON-tiedostoksi varmuuskopioksi.</p></div>`;
@@ -668,16 +717,18 @@ $('#btnList').onclick = () => {
     if (a.dataset.a === 'close') m.remove();
     if (a.dataset.a === 'new'){ cur = blank(); kokeet.unshift(cur); save(); m.remove(); reload(); showTab('info'); }
     if (a.dataset.a === 'open'){ cur = kokeet.find(k=>k.id===id); save(); m.remove(); reload(); }
-    if (a.dataset.a === 'del'){ askConfirm('Poistetaanko koe pysyvästi?', () => { kokeet = kokeet.filter(k=>k.id!==id); if (cur.id===id){ cur = kokeet[0] || blank(); if (!kokeet.length) kokeet.push(cur); } save(); m.remove(); reload(); }); }
+    if (a.dataset.a === 'del'){ askConfirm('Poistetaanko koe pysyvästi?', () => { kokeet = kokeet.filter(k=>k.id!==id); idb.del(id+':group'); idb.del(id+':dog'); if (cur.id===id){ cur = kokeet[0] || blank(); if (!kokeet.length) kokeet.push(cur); } save(); m.remove(); reload(); }); }
   };
   $('[data-a=import]', m).onchange = e => {
     const f = e.target.files[0]; if (!f) return;
-    f.text().then(txt => { const k = JSON.parse(txt); if (!k.s || !k.info) throw 0; k.id = uid(); kokeet.unshift(k); cur = k; save(); m.remove(); reload(); toast('Koe tuotu'); })
+    f.text().then(txt => { const k = JSON.parse(txt); if (!k.s || !k.info) throw 0; k.id = uid(); const tr = k.tracks; delete k.tracks;
+      if (tr) { if (tr.group && tr.group.length) idb.set(k.id+':group', tr.group); if (tr.dog && tr.dog.length) idb.set(k.id+':dog', tr.dog); }
+      kokeet.unshift(k); cur = k; save(); m.remove(); setTimeout(reload, 200); toast('Koe tuotu'); })
       .catch(() => toast('Tiedostoa ei voitu lukea'));
   };
 };
 function scoreOf(k){ const keep = cur; cur = k; const tl = TL; TL = H.timeline(k.events, Date.now()); const t = totals().total; cur = keep; TL = tl; return t; }
-function reload(){ TL = H.timeline(cur.events, Date.now()); bindFields(); refreshHeader(); showTab(tab); }
+function reload(){ TRACKS = { group: [], dog: [] }; recompute(); bindFields(); refreshHeader(); showTab(tab); loadTracks(cur.id).then(() => { recompute(); refreshHeader(); if (tab==='map') renderMap(); if (tab==='score') renderScore(); }); }
 
 /* ---------- apuikkunat ---------- */
 let toastT;
@@ -694,6 +745,164 @@ function showText(title, txt){
   const m = document.createElement('div'); m.className = 'modal';
   m.innerHTML = `<div class="sheet"><b>${esc(title)}</b><textarea style="min-height:50vh;margin-top:8px;font-family:ui-monospace,monospace;font-size:13px">${esc(txt)}</textarea><button class="btn" style="margin-top:8px">Sulje</button></div>`;
   document.body.appendChild(m); $('button', m).onclick = () => m.remove();
+}
+
+/* ---------- REITIT: tallennus (IndexedDB) ---------- */
+const idb = (() => {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    try { const r = indexedDB.open('hirv', 1); r.onupgradeneeded = () => r.result.createObjectStore('tracks'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }
+    catch(e){ rej(e); }
+  }));
+  const tx = (mode, fn) => open().then(db => new Promise((res, rej) => { const t = db.transaction('tracks', mode); const st = t.objectStore('tracks'); const r = fn(st); t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); }));
+  return {
+    get: k => tx('readonly', st => st.get(k)).catch(() => store.get('hirv.trk.'+k, null)),
+    set: (k, v) => tx('readwrite', st => st.put(v, k)).catch(() => store.set('hirv.trk.'+k, v)),
+    del: k => tx('readwrite', st => st.delete(k)).catch(() => {})
+  };
+})();
+async function loadTracks(id){
+  const [g, d] = await Promise.all([idb.get(id+':group'), idb.get(id+':dog')]);
+  if (cur.id !== id) return;
+  TRACKS.group = g || []; TRACKS.dog = d || [];
+  if (gps.id && gps.kokeId === id) TRACKS.group = gps.buf.length >= TRACKS.group.length ? gps.buf : TRACKS.group;
+}
+const saveTrack = (kind) => idb.set(cur.id+':'+kind, TRACKS[kind]);
+
+/* ---------- REITIT: GPS-seuranta ---------- */
+const gps = { id: null, kokeId: null, buf: [], last: null, lock: null, err: '', saveT: 0 };
+async function wakeLock(on){
+  try {
+    if (on && 'wakeLock' in navigator) { gps.lock = await navigator.wakeLock.request('screen'); }
+    else if (!on && gps.lock) { await gps.lock.release(); gps.lock = null; }
+  } catch(e){}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && gps.id) wakeLock(true);
+  if (document.visibilityState === 'hidden' && gps.id && gps.kokeId === cur.id) saveTrack('group');
+});
+function onFix(p){
+  const c = p.coords, fix = [p.timestamp || Date.now(), +c.latitude.toFixed(6), +c.longitude.toFixed(6), Math.round(c.accuracy)];
+  gps.last = fix; gps.err = '';
+  if (c.accuracy <= 50 && gps.kokeId === cur.id) {
+    const tr = TRACKS.group, prev = tr[tr.length-1];
+    if (!prev || window.GEO.dist(prev, fix) >= 5 || fix[0] - prev[0] >= 30000) { tr.push(fix); gps.buf = tr; }
+    if (Date.now() - gps.saveT > 20000) { gps.saveT = Date.now(); saveTrack('group'); }
+  }
+  if (tab === 'map') { gpsStatus(); if (Date.now() - (gps.drawT||0) > 5000) { gps.drawT = Date.now(); recompute(); drawMap(); renderDist(); } }
+}
+function startGps(){
+  if (!('geolocation' in navigator)) return toast('Laite ei tue paikannusta');
+  gps.kokeId = cur.id; gps.buf = TRACKS.group;
+  gps.id = navigator.geolocation.watchPosition(onFix, e => { gps.err = e.code === 1 ? 'Sijaintilupa evätty' : 'Ei GPS-signaalia'; gpsStatus(); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+  wakeLock(true); gpsStatus();
+}
+function stopGps(){
+  if (gps.id !== null) navigator.geolocation.clearWatch(gps.id);
+  gps.id = null; wakeLock(false);
+  if (gps.kokeId === cur.id) saveTrack('group');
+  gpsStatus(); refresh();
+}
+function gpsStatus(){
+  const b = $('#btnGps'); if (!b) return;
+  const on = gps.id !== null && gps.kokeId === cur.id;
+  b.textContent = on ? 'Lopeta seuranta' : 'Aloita seuranta';
+  b.classList.toggle('danger', on);
+  const km = window.GEO.length(TRACKS.group, -Infinity, Infinity) / 1000;
+  let t = `${TRACKS.group.length} pistettä · ${fmt(km)} km`;
+  if (on) t = (gps.last ? `±${gps.last[3]} m · ` : 'Haetaan sijaintia… · ') + t;
+  if (gps.err) t = gps.err + ' · ' + t;
+  if (gps.id !== null && gps.kokeId !== cur.id) t = 'Seuranta käynnissä toisessa kokeessa · ' + t;
+  $('#gpsStatus').textContent = t;
+}
+// sijainti tapahtumaan
+function stampEvent(e){
+  if (cur.evPos === false || !('geolocation' in navigator)) return;
+  if (gps.last && Date.now() - gps.last[0] < 30000) { e.pos = [gps.last[1], gps.last[2], gps.last[3]]; return; }
+  try {
+    navigator.geolocation.getCurrentPosition(p => { e.pos = [+p.coords.latitude.toFixed(6), +p.coords.longitude.toFixed(6), Math.round(p.coords.accuracy)]; save(); refresh(); },
+      () => {}, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
+  } catch(err){}
+}
+
+/* ---------- REITIT: näkymä ---------- */
+function renderMap(){
+  $('#btnGps').onclick = () => (gps.id !== null && gps.kokeId === cur.id) ? stopGps() : (gps.id !== null ? (stopGps(), startGps()) : startGps());
+  const ce = $('#chkEvPos'); ce.checked = cur.evPos !== false; ce.onchange = () => { cur.evPos = ce.checked; save(); };
+  $('#dogFile').onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    f.text().then(txt => {
+      const pts = window.GEO.parseTrack(txt);
+      if (pts.length < 2) throw 0;
+      TRACKS.dog = pts; saveTrack('dog'); recompute(); renderMap(); refreshHeader();
+      toast(`Koiran reitti tuotu: ${pts.length} pistettä`);
+    }).catch(() => toast('Tiedostosta ei löytynyt aikaleimattua reittiä'));
+    e.target.value = '';
+  };
+  $('#btnDogDel').onclick = () => askConfirm('Poistetaanko koiran reitti?', () => { TRACKS.dog = []; idb.del(cur.id+':dog'); recompute(); renderMap(); refreshHeader(); });
+  $('#btnGroupDel').onclick = () => askConfirm('Poistetaanko ryhmän GPS-reitti?', () => { if (gps.kokeId === cur.id) stopGps(); TRACKS.group = []; gps.buf = TRACKS.group; idb.del(cur.id+':group'); recompute(); renderMap(); refreshHeader(); });
+  $('#btnGpx').onclick = () => {
+    if (!TRACKS.group.length && !TRACKS.dog.length) return toast('Ei tallennettuja reittejä');
+    const gpx = window.GEO.toGPX({ 'ryhmä': TRACKS.group, 'koira': TRACKS.dog }, cur.info.koira || 'HIRV');
+    downloadFile(`hirv-${(cur.info.koira||'koe').replace(/\W+/g,'_')}-${cur.info.pvm||''}.gpx`, gpx, 'application/gpx+xml', 'GPX');
+  };
+  const d = TRACKS.dog;
+  $('#dogInfo').textContent = d.length ? `${d.length} pistettä · ${hhmm(d[0][0])}–${hhmm(d[d.length-1][0])} · ${fmt(GEOD.dogKm)} km` : 'Ei koiran reittiä.';
+  $('#btnDogDel').classList.toggle('hidden', !d.length);
+  if (d.length && cur.events.length) {
+    const ev = cur.events.map(e => e.t), lo = Math.min(...ev), hi = Math.max(...ev);
+    if (d[d.length-1][0] < lo - 3600000 || d[0][0] > hi + 3600000) $('#dogInfo').textContent += ' · ⚠ reitin kellonajat eivät osu ajanoton tapahtumiin';
+  }
+  gpsStatus(); drawMap(); renderDist();
+}
+function renderDist(){
+  const g = GEOD, km = v => v === null || v === undefined ? '–' : fmt(v) + ' km', m = v => v === null || v === undefined ? '–' : v + ' m';
+  let h = '<table><tr><th>Hakulenkki</th><th class="n">Kesto</th><th class="n">Pituus</th><th class="n">Max etäisyys</th></tr>';
+  h += g.lenkit.length ? g.lenkit.map((l,i) => `<tr><td>${i+1}${l.loyto?' (löytö)':''}</td><td class="n">${l.min} min</td><td class="n">${km(l.km)}</td><td class="n">${m(l.dist)}</td></tr>`).join('') : '<tr><td colspan="4" class="muted">Ei irtilaskuja ajanotossa</td></tr>';
+  h += '</table><table style="margin-top:10px">';
+  h += `<tr><td>Löytömatka</td><td class="n">${km(g.loyto && g.loyto.matka)}</td></tr>`;
+  h += `<tr><td>Suora etäisyys löytöön</td><td class="n">${km(g.loyto && g.loyto.suora)}</td></tr>`;
+  h += `<tr><td>Seuraaminen</td><td class="n">${km(g.seurKm)}</td></tr>`;
+  g.lhSade.forEach((v,i) => { h += `<tr><td>Löytöhaukun säde, löytö ${i+1}</td><td class="n">${m(v)}</td></tr>`; });
+  h += `<tr><td>Ryhmän kulkema matka</td><td class="n">${km(g.groupKm ? +g.groupKm.toFixed(2) : 0)}</td></tr>`;
+  h += `<tr><td>Koiran kulkema matka</td><td class="n">${km(g.dogKm ? +g.dogKm.toFixed(2) : 0)}</td></tr></table>`;
+  if (!g.hasDog) h += '<p class="muted">Pituudet ja etäisyydet lasketaan koiran reitistä – tuo se paikantimesta.</p>';
+  $('#distTable').innerHTML = h;
+}
+function drawMap(){
+  const cv = $('#mapCanvas'); if (!cv) return;
+  const W = cv.clientWidth || 320, dpr = window.devicePixelRatio || 1;
+  cv.width = W * dpr; cv.height = W * dpr;
+  const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,W);
+  const evp = cur.events.filter(e => e.pos).map(e => [e.t, e.pos[0], e.pos[1], e.type]);
+  const all = [...TRACKS.group, ...TRACKS.dog, ...evp];
+  const css = getComputedStyle(document.documentElement);
+  c.fillStyle = css.getPropertyValue('--muted'); c.font = '13px system-ui';
+  if (!all.length) { c.fillText('Ei sijaintitietoja vielä', 12, 24); return; }
+  let la0 = Infinity, la1 = -Infinity, lo0 = Infinity, lo1 = -Infinity;
+  all.forEach(p => { la0 = Math.min(la0,p[1]); la1 = Math.max(la1,p[1]); lo0 = Math.min(lo0,p[2]); lo1 = Math.max(lo1,p[2]); });
+  const kx = Math.cos((la0+la1)/2*Math.PI/180), pad = 18;
+  const spanM = Math.max((la1-la0)*111320, (lo1-lo0)*111320*kx, 200);
+  const sc = (W - 2*pad) / spanM, cx = (lo0+lo1)/2, cy = (la0+la1)/2;
+  const X = p => W/2 + (p[2]-cx)*111320*kx*sc, Y = p => W/2 - (p[1]-cy)*111320*sc;
+  const line = (tr, col, w) => { if (tr.length < 2) return; c.strokeStyle = col; c.lineWidth = w; c.lineJoin = 'round'; c.beginPath(); tr.forEach((p,i) => i ? c.lineTo(X(p),Y(p)) : c.moveTo(X(p),Y(p))); c.stroke(); };
+  line(TRACKS.group, '#3b6fb6', 2.5); line(TRACKS.dog, '#d9822b', 1.8);
+  const dot = (p, col, r) => { c.fillStyle = col; c.beginPath(); c.arc(X(p), Y(p), r, 0, 7); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1.5; c.stroke(); };
+  evp.forEach(p => dot(p, EV_COLORS[p[3]], 4));
+  if (TRACKS.dog.length) cur.events.filter(e => e.type === 'loyto' || e.type === 'karkko').forEach(e => { const p = window.GEO.at(TRACKS.dog, e.t); if (p) dot(p, EV_COLORS[e.type], 6); });
+  const g = TRACKS.group; if (g.length) dot(g[g.length-1], '#3b6fb6', 6);
+  // mittakaava
+  const nice = [50,100,200,500,1000,2000,5000,10000].find(v => v*sc > W/5) || 10000;
+  c.strokeStyle = css.getPropertyValue('--ink'); c.lineWidth = 2; c.beginPath(); c.moveTo(pad, W-pad); c.lineTo(pad + nice*sc, W-pad); c.stroke();
+  c.fillStyle = css.getPropertyValue('--ink'); c.fillText(nice >= 1000 ? (nice/1000)+' km' : nice+' m', pad, W-pad-6);
+}
+function downloadFile(name, data, type, label){
+  if (window.self !== window.top) return showText(label + ' (kopioi talteen)', data);
+  try {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([data], {type}));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  } catch(e){ showText(label, data); }
 }
 
 /* ---------- käynnistys ---------- */

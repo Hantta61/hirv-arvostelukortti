@@ -214,15 +214,23 @@
       const k = karkot.find(x => x.t > l.t);
       const lim = Math.min(next, k ? k.t : Infinity);
       const c = chains.find(c => c.start >= l.t && c.start < lim);
-      return { t: l.t, min: c && c.type === 'kh' ? Math.round((Math.min(c.end, lim) - c.start) / MIN) : 0 };
+      const ok = c && c.type === 'kh';
+      return { t: l.t, min: ok ? Math.round((Math.min(c.end, lim) - c.start) / MIN) : 0, start: ok ? c.start : null, end: ok ? Math.min(c.end, lim) : null };
+    });
+    // hakulenkit: irtilaskusta kytkentään, löytöön tai seuraavaan irtilaskuun
+    const lenkit = ev.filter(e => e.type === 'irti').map(ir => {
+      const stop = ev.find(e => e.t > ir.t && ['kytk', 'loyto', 'irti', 'era'].includes(e.type));
+      const end = stop ? stop.t : now;
+      return { start: ir.t, end, min: Math.round((end - ir.t) / MIN), loyto: !!(stop && stop.type === 'loyto'), open: !stop };
     });
     // seuraaminen ja uusintahaukut karkon jälkeen
-    let seurMin = 0; const uusinta = [];
+    let seurMin = 0; const uusinta = [], seurIv = [];
     karkot.forEach((k, i) => {
       const c = chains.find(c => c.start >= k.t);
       const nextK = karkot[i + 1] ? karkot[i + 1].t : Infinity;
       const stop = Math.min(c ? c.start : workEnd, nextK, workEnd);
       seurMin += Math.max(0, stop - k.t);
+      if (stop > k.t) seurIv.push({ start: k.t, end: stop });
       if (c && c.start < nextK) uusinta.push({ type: c.type === 'kh' ? 'KH' : 'UH', min: Math.round((Math.min(c.end, nextK) - c.start) / MIN) });
     });
     const r = x => Math.round(x / MIN);
@@ -230,7 +238,7 @@
       haku: irti ? Math.min(r((loyto1 ? loyto1.t : (era ? era.t : now)) - irti.t), 300) : 0,
       tyo: loyto1 ? Math.max(0, Math.min(r(workEnd - loyto1.t), 300)) : 0,
       kh: r(kh + gapKh), sh: r(sh), hauk: r(kh + sh + gapAll),
-      karkot: karkot.length, amp, loydot: lhaukut, seurMin: r(seurMin), uusinta,
+      karkot: karkot.length, amp, loydot: lhaukut, seurMin: r(seurMin), uusinta, lenkit, seurIv,
       live: segs.some(s => s.live), open: open ? open.type : null, openStart: open ? open.start : null,
       firstLoyto: loyto1 ? loyto1.t : null, workEnd, ended: !!era
     };
