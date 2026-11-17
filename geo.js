@@ -51,7 +51,7 @@
     const gAt = t => groupAt(group, events, t);
     const out = { hasDog, lenkit: [], loyto: null, seurKm: null, lhSade: [], groupKm: group && group.length > 1 ? length(group, -Infinity, Infinity) / 1000 : 0, dogKm: hasDog ? length(dog, -Infinity, Infinity) / 1000 : 0 };
     tl.lenkit.forEach(l => {
-      const o = { min: l.min, loyto: l.loyto, km: null, dist: null };
+      const o = { min: l.min, loyto: l.loyto, noud: l.noud, km: null, dist: null };
       if (hasDog) {
         o.km = +(length(dog, l.start, l.end) / 1000).toFixed(2);
         const md = maxFrom(dog, gAt, l.start, l.end);

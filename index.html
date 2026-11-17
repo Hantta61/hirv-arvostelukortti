@@ -82,7 +82,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .evbtns button .dot{width:10px;height:10px;border-radius:50%;background:#fff;opacity:.8;flex:none}
 .evbtns .c-loyto{background:#7a5a2a}.evbtns .c-kh{background:#2f7a4a}.evbtns .c-sh{background:#4f8a7a}
 .evbtns .c-hl{background:#6b6f68}.evbtns .c-karkko{background:#a4452c}.evbtns .c-amp{background:#c9822b;color:#1d1408}
-.evbtns .c-irti{background:#2f5640}.evbtns .c-lenkki{background:#5d7a3a}.evbtns .c-kytk{background:#47567a}.evbtns .c-pimea{background:#2b2f3a}.evbtns .c-era{background:#1d241f}
+.evbtns .c-irti{background:#2f5640}.evbtns .c-lenkki{background:#5d7a3a}.evbtns .c-kytk{background:#47567a}.evbtns .c-nouto{background:#7a3b6b}.evbtns .c-pimea{background:#2b2f3a}.evbtns .c-era{background:#1d241f}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .stat .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -285,9 +285,10 @@ const uid = () => Math.random().toString(36).slice(2,10);
 const EV = {
   irti:{l:'Irtilasku', c:'c-irti'}, lenkki:{l:'Uusi hakulenkki', c:'c-lenkki'}, loyto:{l:'Löytö', c:'c-loyto'}, kh:{l:'Kiinteä haukku', c:'c-kh'}, sh:{l:'Siirtyvä haukku', c:'c-sh'},
   hl:{l:'Haukku taukoaa', c:'c-hl'}, karkko:{l:'Karkko', c:'c-karkko'}, amp:{l:'Ampumatilaisuus', c:'c-amp'}, kytk:{l:'Kytketty / yhteys', c:'c-kytk'},
+  nouto:{l:'Nouto', c:'c-nouto'},
   pimea:{l:'Pimeä tuli', c:'c-pimea'}, era:{l:'Erä päättyy', c:'c-era'}
 };
-const EV_COLORS = {irti:'#2f5640',lenkki:'#5d7a3a',loyto:'#7a5a2a',kh:'#2f7a4a',sh:'#4f8a7a',hl:'#6b6f68',karkko:'#a4452c',amp:'#c9822b',kytk:'#47567a',pimea:'#2b2f3a',era:'#1d241f'};
+const EV_COLORS = {irti:'#2f5640',lenkki:'#5d7a3a',loyto:'#7a5a2a',kh:'#2f7a4a',sh:'#4f8a7a',hl:'#6b6f68',karkko:'#a4452c',amp:'#c9822b',kytk:'#47567a',nouto:'#7a3b6b',pimea:'#2b2f3a',era:'#1d241f'};
 
 /* ---------- tallennus ---------- */
 const store = {
@@ -337,7 +338,7 @@ function suggestions(){
 function mergedHaku(){
   const s = cur.s.haku, g = GEOD.lenkit, n = Math.max(s.lenkit.length, g.length);
   return { lel: s.lel, lenkit: Array.from({length:n}, (_,i) => { const m = s.lenkit[i] || {}, a = g[i] || {};
-    return { km: pick(m.km, a.km), dist: pick(m.dist, a.dist), min: pick(m.min, a.min), noud: m.noud, eihae: m.eihae }; }) };
+    return { km: pick(m.km, a.km), dist: pick(m.dist, a.dist), min: pick(m.min, a.min), noud: (m.noud === undefined || m.noud === null) ? !!a.noud : m.noud, eihae: m.eihae }; }) };
 }
 function mergedLoyto(){
   const s = cur.s.loyto, g = GEOD.loyto || {};
@@ -475,14 +476,14 @@ function catBody(c){
     return `
     <label class="chk"><input type="checkbox" data-f="s.haku.lel" data-rerender="1"> Löytö ensimmäiseltä hakulenkiltä (LEL, max 8 p)</label>
     ${g[0] && g[0].loyto && !s.haku.lel ? '<p class="warn" style="margin-top:0">Ajanoton mukaan löytö tapahtui ensimmäiseltä lenkiltä.</p>' : ''}
-    ${idx.map(i=>{ const a = g[i] || {}; return `<div class="sub"><div class="hd">Lenkki ${i+1}${a.min!=null?` · ${a.min} min ajanotosta`:''}${!g[i] && nL>1?`<button class="btn sm ghost danger x" data-del-lenkki="${i}">Poista</button>`:''}</div>
+    ${idx.map(i=>{ const a = g[i] || {}; return `<div class="sub"><div class="hd">Lenkki ${i+1}${a.min!=null?` · ${a.min} min ajanotosta`:''}${a.noud?' · noudettu':''}${!g[i] && nL>1?`<button class="btn sm ghost danger x" data-del-lenkki="${i}">Poista</button>`:''}</div>
       <div class="grid">
         <div><label>Pituus km</label><input inputmode="decimal" data-f="s.haku.lenkit.${i}.km" ${ph(a.km)}></div>
         <div><label>Kesto min</label><input inputmode="numeric" data-f="s.haku.lenkit.${i}.min" ${ph(a.min)}></div>
         <div><label>Hakunopeus km/h</label><output class="speed" data-speed="${i}">–</output></div>
         <div><label>Suurin etäisyys m</label><input inputmode="numeric" data-f="s.haku.lenkit.${i}.dist" ${ph(a.dist)}></div>
       </div>
-      <label class="chk"><input type="checkbox" data-f="s.haku.lenkit.${i}.noud"> Noudettu (max 7 p)</label>
+      <label class="chk"><input type="checkbox" data-f="s.haku.lenkit.${i}.noud" data-noud-auto="${a.noud?1:''}"> Noudettu (max 7 p)${a.noud?' <span class="muted">· ajanotosta</span>':''}</label>
       <label class="chk"><input type="checkbox" data-f="s.haku.lenkit.${i}.eihae"> Koira ei hae (0 p)</label></div>`; }).join('')}
     <button class="btn sm" id="addLenkki">+ Lisää hakulenkki</button>
     <details><summary>Arvosteluperusteet</summary><table>
@@ -492,7 +493,9 @@ function catBody(c){
       <tr><td>5–6</td><td>≥ 1 km</td><td>tyydyttävä</td><td>≥ 400 m</td><td>5–10 min</td></tr>
       <tr><td>3–4</td><td>&lt; 1 km</td><td>välttävä</td><td>≥ 300 m</td><td>2–5 min</td></tr>
       <tr><td>1–2</td><td>&lt; 500 m</td><td>huono</td><td>&lt; 300 m</td><td>0–3 min</td></tr>
-    </table><p>Hakunopeus = pituus km ÷ kesto h (100 m/min = 6 km/h = kiitettävä). Arvostellaan lenkkien keskiarvona. Pituus tai etäisyys on täytyttävä; nopeus ratkaisee välin ylä-/alapään. LEL: 8/7/6/5/4 p. Muuta riistaa seuranneet lenkit eivät vaikuta.</p></details>`; }
+    </table><table style="margin-top:8px"><tr><th>Väli</th><th class="n">9–10</th><th class="n">7–8</th><th class="n">5–6</th><th class="n">3–4</th><th class="n">1–2</th></tr>
+      <tr><td>LEL</td><td class="n">8</td><td class="n">7</td><td class="n">6</td><td class="n">5</td><td class="n">4</td></tr>
+      <tr><td>Noudettu</td><td class="n">7</td><td class="n">6</td><td class="n">5</td><td class="n">4</td><td class="n">3</td></tr></table><p>Hakunopeus = pituus km ÷ kesto h (100 m/min = 6 km/h = kiitettävä). Arvostellaan lenkkien keskiarvona. Pituus tai etäisyys on täytyttävä; nopeus ratkaisee välin ylä-/alapään. LEL: 8/7/6/5/4 p. Noudettu lenkki: 7/6/5/4/3 p, kuitenkin enintään noutamattoman lenkin pisteet. Nouto-painike ajanotossa päättää lenkin ja merkitsee sen noudetuksi. Muuta riistaa seuranneet lenkit eivät vaikuta.</p></details>`; }
   case 'loyto': return `
     <div class="grid">
       <div><label>Löytömatka km</label><input inputmode="decimal" data-f="s.loyto.matka" ${ph(GEOD.loyto && GEOD.loyto.matka)}></div>
@@ -605,6 +608,7 @@ function renderScore(){
       <div class="sugg-line" data-sl="${c.id}"></div>
     </div>`).join('');
   bindFields($('#cats'));
+  $$('[data-noud-auto="1"]').forEach(cb => { const v = getP(cur, cb.dataset.f); if (v === undefined || v === null) cb.checked = true; });
   $$('.pts').forEach(row => row.onclick = e => {
     const b = e.target.closest('button'); if (!b) return;
     const id = +row.dataset.pts; const v = b.dataset.v === '-' ? '-' : +b.dataset.v;

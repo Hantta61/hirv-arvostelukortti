@@ -42,7 +42,8 @@
     const speed = hakuNopeus(l);
     let p = b * 2 - 1;                       // bändin alaraja
     if (speed !== null && speed >= 6) p += 1; // kiitettävä nopeus → yläraja
-    if (l.noud) p = Math.min(p, 7);          // noudettu hakulenkki enintään 7
+    // noudettu: LEL-sarake yhtä pienempänä (7/6/5/4/3), ei kuitenkaan enempää kuin noutamaton lenkki
+    if (l.noud) p = Math.min(p, [0, 3, 4, 5, 6, 7][b]);
     return p;
   }
   function haku(s) {
@@ -192,7 +193,7 @@
     const segs = []; let open = null;
     for (const e of ev) {
       if (e.type === 'kh' || e.type === 'sh') { if (open) { open.end = e.t; segs.push(open); } open = { type: e.type, start: e.t }; }
-      else if (['hl', 'karkko', 'era', 'kytk'].includes(e.type)) { if (open) { open.end = e.t; segs.push(open); open = null; } }
+      else if (['hl', 'karkko', 'era', 'kytk', 'nouto'].includes(e.type)) { if (open) { open.end = e.t; segs.push(open); open = null; } }
     }
     if (open) { open.end = era ? era.t : now; open.live = !era; segs.push(open); }
     const clip = segs.map(s => ({ ...s, start: Math.max(s.start, loyto1 ? loyto1.t : s.start), end: Math.min(s.end, workEnd) })).filter(s => s.end > s.start);
@@ -223,9 +224,9 @@
     });
     // hakulenkit: irtilaskusta tai Uusi hakulenkki -kirjauksesta kytkentään, löytöön, seuraavaan lenkkiin tai erän loppuun
     const lenkit = ev.filter(e => e.type === 'irti' || e.type === 'lenkki').map(ir => {
-      const stop = ev.find(e => e.t > ir.t && ['kytk', 'loyto', 'irti', 'lenkki', 'era'].includes(e.type));
+      const stop = ev.find(e => e.t > ir.t && ['kytk', 'nouto', 'loyto', 'irti', 'lenkki', 'era'].includes(e.type));
       const end = stop ? stop.t : now;
-      return { start: ir.t, end, min: Math.round((end - ir.t) / MIN), loyto: !!(stop && stop.type === 'loyto'), open: !stop };
+      return { start: ir.t, end, min: Math.round((end - ir.t) / MIN), loyto: !!(stop && stop.type === 'loyto'), noud: !!(stop && stop.type === 'nouto'), open: !stop };
     });
     // seuraaminen ja uusintahaukut karkon jälkeen
     let seurMin = 0; const uusinta = [], seurIv = [];
