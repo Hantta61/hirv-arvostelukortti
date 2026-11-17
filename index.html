@@ -204,7 +204,9 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
     </div>
     <div class="card">
       <h2>Kartta</h2>
-      <canvas id="mapCanvas" style="width:100%;aspect-ratio:1/1;background:var(--bg);border-radius:10px;border:1px solid var(--line);touch-action:none"></canvas>
+      <div id="lmap" style="width:100%;height:min(70vh,520px);border-radius:10px;border:1px solid var(--line);overflow:hidden;isolation:isolate;z-index:0"></div>
+      <canvas id="mapCanvas" class="hidden" style="width:100%;aspect-ratio:1/1;background:var(--bg);border-radius:10px;border:1px solid var(--line);touch-action:none"></canvas>
+      <div class="row" style="margin-top:8px"><button class="btn sm" id="btnFit">Näytä kaikki</button><button class="btn sm" id="btnMe">Oma sijainti</button><span class="muted" id="mapMsg"></span></div>
       <div class="muted" style="margin-top:6px"><span class="tag" style="background:#3b6fb6"></span>Ryhmä &nbsp; <span class="tag" style="background:#d9822b"></span>Koira &nbsp; <span class="tag" style="background:#7a5a2a"></span>Löytö &nbsp; <span class="tag" style="background:#a4452c"></span>Karkko</div>
     </div>
     <div class="card">
@@ -744,7 +746,7 @@ $('#btnList').onclick = () => {
   };
 };
 function scoreOf(k){ const keep = cur; cur = k; const tl = TL; TL = H.timeline(k.events, Date.now()); const t = totals().total; cur = keep; TL = tl; return t; }
-function reload(){ TRACKS = { group: [], dog: [] }; recompute(); bindFields(); refreshHeader(); showTab(tab); loadTracks(cur.id).then(() => { recompute(); refreshHeader(); if (tab==='map') renderMap(); if (tab==='score') renderScore(); }); }
+function reload(){ TRACKS = { group: [], dog: [] }; LF.fitted = false; LF.userMoved = false; recompute(); bindFields(); refreshHeader(); showTab(tab); loadTracks(cur.id).then(() => { recompute(); refreshHeader(); if (tab==='map') renderMap(); if (tab==='score') renderScore(); }); }
 
 /* ---------- apuikkunat ---------- */
 let toastT;
@@ -850,7 +852,7 @@ function renderMap(){
     f.text().then(txt => {
       const pts = window.GEO.parseTrack(txt);
       if (pts.length < 2) throw 0;
-      TRACKS.dog = pts; saveTrack('dog'); recompute(); renderMap(); refreshHeader();
+      TRACKS.dog = pts; saveTrack('dog'); LF.fitted = false; LF.userMoved = false; recompute(); renderMap(); refreshHeader();
       toast(`Koiran reitti tuotu: ${pts.length} pistettä`);
     }).catch(() => toast('Tiedostosta ei löytynyt aikaleimattua reittiä'));
     e.target.value = '';
@@ -869,6 +871,12 @@ function renderMap(){
     const ev = cur.events.map(e => e.t), lo = Math.min(...ev), hi = Math.max(...ev);
     if (d[d.length-1][0] < lo - 3600000 || d[0][0] > hi + 3600000) $('#dogInfo').textContent += ' · ⚠ reitin kellonajat eivät osu ajanoton tapahtumiin';
   }
+  $('#btnFit').onclick = () => { LF.userMoved = false; if (LF.map) fitMap(true); };
+  $('#btnMe').onclick = () => {
+    const go = (la, lo) => { if (LF.map) { LF.prog = true; LF.map.setView([la, lo], Math.max(LF.map.getZoom(), 14)); LF.userMoved = true; setTimeout(() => LF.prog = false, 400); } };
+    if (gps.last && Date.now() - gps.last[0] < 60000) return go(gps.last[1], gps.last[2]);
+    try { navigator.geolocation.getCurrentPosition(p => { gps.last = [Date.now(), p.coords.latitude, p.coords.longitude, Math.round(p.coords.accuracy)]; go(p.coords.latitude, p.coords.longitude); drawMap(); }, () => toast('Sijaintia ei saatu'), { enableHighAccuracy: true, timeout: 15000 }); } catch(e){}
+  };
   gpsStatus(); drawMap(); renderDist();
 }
 function renderDist(){
@@ -885,7 +893,77 @@ function renderDist(){
   if (!g.hasDog) h += '<p class="muted">Pituudet ja etäisyydet lasketaan koiran reitistä – tuo se paikantimesta.</p>';
   $('#distTable').innerHTML = h;
 }
+/* ---------- karttapohja (Leaflet + OpenTopoMap / OpenStreetMap) ---------- */
+const LF = { p: null, map: null, layer: null, fitted: false, userMoved: false };
+function loadLeaflet(){
+  if (window.L) return Promise.resolve(window.L);
+  if (LF.p) return LF.p;
+  LF.p = new Promise((res, rej) => {
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(css);
+    const js = document.createElement('script'); js.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+    js.onload = () => res(window.L); js.onerror = () => { LF.p = null; rej(new Error('leaflet')); };
+    document.head.appendChild(js);
+    setTimeout(() => { if (!window.L) { LF.p = null; rej(new Error('timeout')); } }, 12000);
+  });
+  return LF.p;
+}
+function initLeaflet(L){
+  if (LF.map) { setTimeout(() => LF.map.invalidateSize(), 50); return; }
+  const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc',
+    attribution: 'Kartta: © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA), © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' });
+  const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19,
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' });
+  LF.map = L.map('lmap', { layers: [topo], zoomControl: true, attributionControl: true }).setView([62.9, 27.6], 6);
+  L.control.layers({ 'Maastokartta': topo, 'Katukartta': osm }, null, { position: 'topright' }).addTo(LF.map);
+  L.control.scale({ imperial: false }).addTo(LF.map);
+  LF.layer = L.layerGroup().addTo(LF.map);
+  LF.map.on('dragstart zoomstart', e => { if (!LF.prog) LF.userMoved = true; });
+  setTimeout(() => LF.map.invalidateSize(), 50);
+}
+function fitMap(force){
+  if (!LF.map) return;
+  const pts = mapPoints();
+  if (!pts.length) return;
+  if (!force && (LF.fitted || LF.userMoved)) return;
+  LF.prog = true;
+  if (pts.length === 1) LF.map.setView([pts[0][1], pts[0][2]], 15); else LF.map.fitBounds(pts.map(p => [p[1], p[2]]), { padding: [24, 24], maxZoom: 16 });
+  setTimeout(() => LF.prog = false, 400);
+  LF.fitted = true;
+}
+function mapPoints(){ return [...TRACKS.group, ...TRACKS.dog, ...cur.events.filter(e => e.pos).map(e => [e.t, e.pos[0], e.pos[1]])]; }
+function drawLeaflet(){
+  const L = window.L; if (!L || !LF.map) return;
+  LF.layer.clearLayers();
+  const ll = tr => tr.map(p => [p[1], p[2]]);
+  if (TRACKS.group.length > 1) L.polyline(ll(TRACKS.group), { color: '#3b6fb6', weight: 4, opacity: .85 }).bindTooltip('Ryhmä').addTo(LF.layer);
+  if (TRACKS.dog.length > 1) L.polyline(ll(TRACKS.dog), { color: '#d9822b', weight: 3, opacity: .9 }).bindTooltip('Koira').addTo(LF.layer);
+  cur.events.filter(e => e.pos).forEach(e => L.circleMarker([e.pos[0], e.pos[1]], { radius: 5, color: '#fff', weight: 1.5, fillColor: EV_COLORS[e.type], fillOpacity: 1 })
+    .bindTooltip(`${EV[e.type].l} ${hhmm(e.t)} (ryhmä)`).addTo(LF.layer));
+  if (TRACKS.dog.length) cur.events.filter(e => ['loyto','karkko','kh','amp'].includes(e.type)).forEach(e => {
+    const p = window.GEO.at(TRACKS.dog, e.t); if (!p) return;
+    L.circleMarker([p[1], p[2]], { radius: e.type === 'loyto' ? 9 : 7, color: '#fff', weight: 2, fillColor: EV_COLORS[e.type], fillOpacity: 1 })
+      .bindTooltip(`Koira: ${EV[e.type].l} ${hhmm(e.t)}`).addTo(LF.layer);
+  });
+  const g = TRACKS.group;
+  const me = gps.last && gps.id !== null ? [gps.last[0], gps.last[1], gps.last[2], gps.last[3]] : (g.length ? g[g.length-1] : null);
+  if (me) {
+    if (me[3]) L.circle([me[1], me[2]], { radius: me[3], color: '#3b6fb6', weight: 1, fillOpacity: .08 }).addTo(LF.layer);
+    L.circleMarker([me[1], me[2]], { radius: 7, color: '#fff', weight: 2, fillColor: '#3b6fb6', fillOpacity: 1 }).bindTooltip('Ryhmä nyt').addTo(LF.layer);
+  }
+  fitMap(false);
+}
 function drawMap(){
+  if (window.L && LF.map) { drawLeaflet(); return; }
+  loadLeaflet().then(L => {
+    $('#lmap').classList.remove('hidden'); $('#mapCanvas').classList.add('hidden'); $('#mapMsg').textContent = '';
+    initLeaflet(L); drawLeaflet();
+  }).catch(() => {
+    $('#lmap').classList.add('hidden'); $('#mapCanvas').classList.remove('hidden');
+    $('#mapMsg').textContent = 'Karttapohja ei latautunut (ei verkkoa) – reitit näytetään ilman karttaa.';
+    drawCanvas();
+  });
+}
+function drawCanvas(){
   const cv = $('#mapCanvas'); if (!cv) return;
   const W = cv.clientWidth || 320, dpr = window.devicePixelRatio || 1;
   cv.width = W * dpr; cv.height = W * dpr;
