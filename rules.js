@@ -2,7 +2,7 @@
    Kaikki funktiot palauttavat ehdotuksen {p, note, cap}. p = 0–10 tai '-' (ei voida arvostella). */
 (function (root) {
   'use strict';
-  const num = v => (v === '' || v === null || v === undefined || isNaN(+v)) ? null : +v;
+  const num = v => { if (v === '' || v === null || v === undefined) return null; const n = +String(v).trim().replace(',', '.'); return isNaN(n) ? null : n; };
 
   const CATS = [
     { id: 1, key: 'haku', name: 'Haku', k: 1.5 },
@@ -30,12 +30,16 @@
     if (km === null && d === null && m !== null) b = m >= 15 ? 5 : m >= 10 ? 4 : m >= 5 ? 3 : m >= 2 ? 2 : 1;
     return b;
   }
+  /* Hakunopeus km/h = lenkin pituus (km) / kesto (h). Kiitettävä, kun ≥ 6 km/h (0,1 km/min). */
+  function hakuNopeus(l) {
+    const km = num(l.km), m = num(l.min);
+    return (km !== null && km > 0 && m !== null && m > 0) ? km / (m / 60) : null;
+  }
   function hakuLenkki(l) {
     if (l.eihae) return 0;
     const b = hakuBand(l);
     if (!b) return null;
-    const km = num(l.km), m = num(l.min);
-    const speed = (km !== null && m) ? km / (m / 60) : null;
+    const speed = hakuNopeus(l);
     let p = b * 2 - 1;                       // bändin alaraja
     if (speed !== null && speed >= 6) p += 1; // kiitettävä nopeus → yläraja
     if (l.noud) p = Math.min(p, 7);          // noudettu hakulenkki enintään 7
@@ -217,9 +221,9 @@
       const ok = c && c.type === 'kh';
       return { t: l.t, min: ok ? Math.round((Math.min(c.end, lim) - c.start) / MIN) : 0, start: ok ? c.start : null, end: ok ? Math.min(c.end, lim) : null };
     });
-    // hakulenkit: irtilaskusta kytkentään, löytöön tai seuraavaan irtilaskuun
-    const lenkit = ev.filter(e => e.type === 'irti').map(ir => {
-      const stop = ev.find(e => e.t > ir.t && ['kytk', 'loyto', 'irti', 'era'].includes(e.type));
+    // hakulenkit: irtilaskusta tai Uusi hakulenkki -kirjauksesta kytkentään, löytöön, seuraavaan lenkkiin tai erän loppuun
+    const lenkit = ev.filter(e => e.type === 'irti' || e.type === 'lenkki').map(ir => {
+      const stop = ev.find(e => e.t > ir.t && ['kytk', 'loyto', 'irti', 'lenkki', 'era'].includes(e.type));
       const end = stop ? stop.t : now;
       return { start: ir.t, end, min: Math.round((end - ir.t) / MIN), loyto: !!(stop && stop.type === 'loyto'), open: !stop };
     });
@@ -244,6 +248,6 @@
     };
   }
 
-  const api = { CATS, SCALE, haku, hakuLenkki, loyto, lh, lhOne, ht, seur, pys, PYS_ROWS, ha, HA_T, kuu, tih, tot, PRIZE, timeline };
+  const api = { CATS, SCALE, haku, hakuLenkki, hakuNopeus, loyto, lh, lhOne, ht, seur, pys, PYS_ROWS, ha, HA_T, kuu, tih, tot, PRIZE, timeline };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.HIRV = api;
 })(this);
