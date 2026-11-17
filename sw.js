@@ -1,4 +1,5 @@
-const CACHE = 'hirv-v6';
+/* HIRV arvostelukortti – © 2026 ICT- ja karttapalvelut Peltonen. Kaikki oikeudet pidätetään. */
+const CACHE = 'hirv-v7';
 const EXT = 'hirv-ext-v1';     // Leaflet-kirjasto ja karttatiilet
 const MAX_TILES = 4000;
 const FILES = ['./', './index.html', './rules.js', './geo.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];

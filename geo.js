@@ -1,3 +1,4 @@
+/* HIRV arvostelukortti – © 2026 ICT- ja karttapalvelut Peltonen. Kaikki oikeudet pidätetään. */
 /* Reitit ja matkalaskenta. Piste = [t(ms), lat, lon, tarkkuus_m?] */
 (function (root) {
   'use strict';

@@ -1,3 +1,4 @@
+/* HIRV arvostelukortti – © 2026 ICT- ja karttapalvelut Peltonen. Kaikki oikeudet pidätetään. */
 /* HIRV-säännöt ja ohjeet (voimassa 1.8.2023) – pisteytyslogiikka.
    Kaikki funktiot palauttavat ehdotuksen {p, note, cap}. p = 0–10 tai '-' (ei voida arvostella). */
 (function (root) {

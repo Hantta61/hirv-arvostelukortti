@@ -16,3 +16,6 @@ Tiedostot: index.html, rules.js (pisteytyssäännöt), sw.js (offline), manifest
 - **Koiran reitti:** vie jälki paikantimesta GPX- tai KML-tiedostona ja tuo se Reitit-välilehdellä.
 - Sovellus laskee hakulenkkien pituudet ja suurimman etäisyyden ryhmästä, löytömatkan, suoran etäisyyden löytöön, seuraamismatkan ja löytöhaukun säteen. Arvot siirtyvät arvosteluun ehdotuksina.
 - Reitit tallentuvat laitteeseen kokeen mukana (IndexedDB) ja kulkevat JSON-viennissä. *Vie reitit GPX* tallentaa molemmat reitit.
+
+---
+© 2026 ICT- ja karttapalvelut Peltonen. Kaikki oikeudet pidätetään.

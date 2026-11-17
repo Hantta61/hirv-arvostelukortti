@@ -3,6 +3,7 @@
   "short_name": "HIRV-kortti",
   "description": "Hirvenhaukkukokeen arvostelukortti – ajanotto ja pisteytys HIRV-sääntöjen (1.8.2023) mukaan",
   "lang": "fi",
+  "developer": { "name": "ICT- ja karttapalvelut Peltonen" },
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
