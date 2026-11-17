@@ -91,8 +91,13 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .live.sh{background:#4f8a7a}
 .live .pulse{width:10px;height:10px;border-radius:50%;background:#fff;animation:p 1.2s infinite}
 @keyframes p{50%{opacity:.25}}
-.evlist .ev{display:grid;grid-template-columns:104px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
-.evlist .ev input[type=time]{padding:6px;font-size:15px}
+.evlist .ev{display:grid;grid-template-columns:74px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.evlist .ev .tbtn{font:inherit;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;padding:8px 4px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%}
+.tsheet .tt{font-size:40px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin:2px 0 10px}
+.tsheet .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
+.tsheet .steps button{font:inherit;font-size:15px;padding:10px 0;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
+.tsheet .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.tsheet .acts .btn{width:100%}
 .evlist .ev .t{font-size:14px;font-weight:600}
 .evlist .ev .nt{font-size:12px;color:var(--muted)}
 .tag{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
@@ -430,23 +435,44 @@ function addEvent(type){
   save(); recompute(); renderEvList(); refreshStats(); refreshHeader();
   toast(EV[type].l + ' ' + hhmm(Date.now()));
 }
+function editTime(e){
+  let t = Math.round(e.t / 60000) * 60000;
+  const m = document.createElement('div'); m.className = 'modal';
+  const steps = [[-60,'−1 h'],[-10,'−10'],[-5,'−5'],[-1,'−1'],[60,'+1 h'],[10,'+10'],[5,'+5'],[1,'+1']];
+  m.innerHTML = `<div class="sheet tsheet"><div class="muted" style="text-align:center">${esc(EV[e.type].l)} · oli ${hhmm(e.t)}</div>
+    <div class="tt"></div>
+    <div class="steps">${steps.map(([d,l]) => `<button data-d="${d}">${l}</button>`).join('')}</div>
+    <input inputmode="numeric" placeholder="tai kirjoita, esim. 0745" style="text-align:center">
+    <div class="acts"><button class="btn" data-x>Peruuta</button><button class="btn pri" data-ok>Aseta</button></div></div>`;
+  document.body.appendChild(m);
+  const show = () => $('.tt', m).textContent = hhmm(t);
+  show();
+  $$('[data-d]', m).forEach(b => b.onclick = () => { t += (+b.dataset.d) * 60000; show(); });
+  const inp = $('input', m);
+  inp.oninput = () => {
+    const d = inp.value.replace(/\D/g, ''); if (d.length < 3) return;
+    const h = +d.slice(0, d.length - 2), mi = +d.slice(-2); if (h > 23 || mi > 59) return;
+    const x = new Date(e.t); x.setHours(h, mi, 0, 0); let nt = x.getTime();
+    if (nt - e.t > 12*3600000) nt -= 86400000; else if (e.t - nt > 12*3600000) nt += 86400000;
+    t = nt; show();
+  };
+  const close = () => m.remove();
+  $('[data-x]', m).onclick = close;
+  m.onclick = ev => { if (ev.target === m) close(); };
+  $('[data-ok]', m).onclick = () => { e.t = t; close(); save(); refresh(); renderEvList(); };
+}
 function renderEvList(){
   const ev = [...cur.events].sort((a,b)=>b.t-a.t);
   $('#evlist').innerHTML = ev.length ? ev.map(e => `
     <div class="ev" data-id="${e.id}">
-      <input type="time" value="${hhmm(e.t)}" data-evt="time">
+      <button class="tbtn" data-evt="time" aria-label="Muuta kellonaikaa">${hhmm(e.t)}</button>
       <div><div class="t"><span class="tag" style="background:${EV_COLORS[e.type]}"></span>${EV[e.type].l}${e.pos?' <span class="muted" title="sijainti tallennettu">📍</span>':''}</div>
         <input placeholder="muistiinpano" value="${esc(e.note)}" data-evt="note" style="padding:4px 6px;font-size:13px;margin-top:3px"></div>
       <button class="btn sm ghost danger" data-evt="del" aria-label="Poista">✕</button>
     </div>`).join('') : '<p class="muted">Ei tapahtumia. Aloita irtilaskusta.</p>';
   $$('#evlist .ev').forEach(row => {
     const e = cur.events.find(x => x.id === row.dataset.id);
-    $('[data-evt=time]', row).onchange = ev2 => {
-      const [h,m] = ev2.target.value.split(':').map(Number); if (isNaN(h)) return;
-      const d = new Date(e.t); d.setHours(h, m, 0, 0); let nt = d.getTime();
-      if (nt - e.t > 12*3600000) nt -= 86400000; else if (e.t - nt > 12*3600000) nt += 86400000; e.t = nt;
-      save(); refresh(); renderEvList();
-    };
+    $('[data-evt=time]', row).onclick = () => editTime(e);
     $('[data-evt=note]', row).oninput = ev2 => { e.note = ev2.target.value; save(); };
     $('[data-evt=del]', row).onclick = () => { askConfirm(`Poistetaanko ${EV[e.type].l} ${hhmm(e.t)}?`, () => { cur.events = cur.events.filter(x => x !== e); save(); refresh(); renderEvList(); }); };
   });

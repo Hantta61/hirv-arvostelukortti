@@ -1,4 +1,4 @@
-const CACHE = 'hirv-v5';
+const CACHE = 'hirv-v6';
 const EXT = 'hirv-ext-v1';     // Leaflet-kirjasto ja karttatiilet
 const MAX_TILES = 4000;
 const FILES = ['./', './index.html', './rules.js', './geo.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
